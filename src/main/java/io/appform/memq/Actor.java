@@ -8,12 +8,10 @@ import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.ClassUtils;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -25,7 +23,8 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition checkCondition = lock.newCondition();
     private final Map<String, M> messages = new HashMap<>();
-    private final Set<String> unacked = new HashSet<>();
+    private final Set<String> inFlight = new HashSet<>();
+    private final AtomicBoolean stopped = new AtomicBoolean();
     private final ExecutorService executorService;
     private final Set<Class<? extends Throwable>> ignoredErrors;
     private Future<?> monitorFuture;
@@ -63,7 +62,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
     }
 
     public void start() {
-        monitorFuture = executorService.submit(() -> this.monitor());
+        monitorFuture = executorService.submit(this::monitor);
     }
 
     private void monitor() {
@@ -71,27 +70,25 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
         try {
             while (true) {
                 checkCondition.await();
-                if (messages.isEmpty()) {
-                    log.trace("Spurious wakeup. Ignoring.");
-                    continue;
+                if(stopped.get()) {
+                    log.info("Actor {} monitor thread exiting", name());
+                    return;
                 }
                 //Find new messages
-                val newMessages = Set.copyOf(Sets.difference(messages.keySet(), unacked));
+                val newMessages = Set.copyOf(Sets.difference(messages.keySet(), inFlight));
                 if (newMessages.isEmpty()) {
-                    log.trace("No new messages. Ignoring.");
+                    log.trace("No new messages. Ignoring spurious wakeup.");
                     continue;
                 }
-                unacked.addAll(newMessages);
-                newMessages.forEach(m -> {
-                    executorService.submit(() -> {
-                        try {
-                            this.handleMessageInternal(messages.get(m));
-                        }
-                        catch (Throwable throwable) {
-                            log.error("Error", throwable);
-                        }
-                    });
-                });
+                inFlight.addAll(newMessages);
+                newMessages.forEach(m -> executorService.submit(() -> {
+                    try {
+                        this.handleMessageInternal(messages.get(m));
+                    }
+                    catch (Throwable throwable) {
+                        log.error("Error", throwable);
+                    }
+                }));
             }
         }
         catch (InterruptedException e) {
@@ -111,7 +108,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
                 .withDelay(Duration.ofSeconds(1));
         var status = false;
         try {
-            status = Failsafe.with(policy)
+            status = Failsafe.with(List.of(policy))
                     .get(() -> handleMessage(message));
         }
         catch (Exception e) {
@@ -119,7 +116,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
         }
         lock.lock();
         try {
-            unacked.remove(id);
+            inFlight.remove(id);
             if (status) {
                 messages.remove(id);
             }
@@ -135,7 +132,15 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
     protected abstract boolean handleMessage(final M message) throws Exception;
 
     @Override
-    public void close() throws Exception {
+    public void close() {
+        lock.lock();
+        try {
+            stopped.set(true);
+            checkCondition.signalAll();
+        }
+        finally {
+            lock.unlock();
+        }
         if (null != monitorFuture) {
             monitorFuture.cancel(true);
         }
