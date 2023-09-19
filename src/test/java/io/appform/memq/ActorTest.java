@@ -35,10 +35,22 @@ class ActorTest {
 
     @Test
     @SneakyThrows
-    void testSuccess() {
+    void testSuccessSinglePartition() {
+        testSuccess(1);
+    }
+
+    @Test
+    @SneakyThrows
+    void testSuccessMultiPartition() {
+        testSuccess(4);
+    }
+
+
+    @SneakyThrows
+    private void testSuccess(int partition) {
         val sum = new AtomicInteger(0);
         val tp = Executors.newFixedThreadPool(100);
-        try(val a = adder(sum)) {
+        try(val a = adder(sum, partition)) {
             a.start();
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
@@ -55,8 +67,10 @@ class ActorTest {
         }
     }
 
-    private static Actor<TestMessage> adder(final AtomicInteger sum) {
-        return new Actor<>(Executors.newFixedThreadPool(1024), Set.of()) {
+
+    private static Actor<TestMessage> adder(final AtomicInteger sum, int partition) {
+        return new Actor<>(Executors.newFixedThreadPool(1024), Set.of(),
+                partition, message -> Math.absExact(message.id.hashCode()) % partition) {
 
             @Override
             public String name() {
