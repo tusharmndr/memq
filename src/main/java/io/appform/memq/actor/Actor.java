@@ -1,13 +1,12 @@
-package io.appform.memq;
+package io.appform.memq.actor;
 
 import com.google.common.collect.Sets;
+import io.appform.memq.exceptionhandler.handlers.ExceptionHandler;
+import io.appform.memq.retry.RetryStrategy;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import org.apache.commons.lang3.ClassUtils;
+import net.jodah.failsafe.internal.util.Assert;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,32 +25,37 @@ import java.util.stream.IntStream;
 @Slf4j
 public abstract class Actor<M extends Message> implements AutoCloseable {
     private final ExecutorService executorService;
-    private final Set<Class<? extends Throwable>> ignoredErrors;
-    private final ExecutorService dispachter;
-    private final Function<M, Integer> partitioner;
-    private final Map<Integer, PartitionQueue<M>> queues;
-
+    private final Set<Class<? extends Throwable>> ignoredErrors; //TODO: Irrelevant as there is no serialization/deserialization
+    private final ExecutorService dispatcher; //TODO::Separate dispatch and add NoDispatch flow
+    private final ToIntFunction<M> partitioner;
+    private final Map<Integer, PartitionQueue<M>> queues; //TODO: Separate is as Mailbox, and take PartitionMailbox by default
+    private final RetryStrategy retryer;
+    private final ExceptionHandler exceptionHandler;
+    //TODO: sidelineExecutor
+    //TODO: expiry message
+    //TODO: Metrics
 
 
     protected Actor(ExecutorService executorService,
-                 Set<Class<? extends Throwable>> ignoredErrors) {
-        this(executorService, ignoredErrors,
-                1, i -> 0);
-    }
-
-    protected Actor(ExecutorService executorService,
+                    RetryStrategy retryer,
+                    ExceptionHandler exceptionHandler,
                     Set<Class<? extends Throwable>> ignoredErrors,
                     int partitions,
-                    Function<M, Integer> partitioner) {
+                    ToIntFunction<M> partitioner) {
+        Assert.notNull(executorService, "Executor service cannot be null");
+        Assert.notNull(retryer, "Retryer cannot be null");
+        Assert.notNull(exceptionHandler, "ExceptionHandler cannot be null");
+        Assert.notNull(partitioner, "Partitioner cannot be null");
         this.executorService = executorService;
         this.ignoredErrors = null != ignoredErrors ? ignoredErrors : Set.of();
-        this.dispachter = Executors.newFixedThreadPool(partitions);
+        this.retryer = retryer;
+        this.exceptionHandler = exceptionHandler;
+        this.dispatcher = Executors.newFixedThreadPool(partitions);
         this.partitioner = partitioner;
-        this.queues = IntStream.range(0,partitions)
+        this.queues = IntStream.range(0, partitions)
                 .boxed()
                 .collect(Collectors.toMap(Function.identity(), i -> new PartitionQueue<M>(this, i)));
     }
-
 
     public abstract String name();
 
@@ -61,7 +66,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
     }
 
     public final boolean publish(final M message) {
-        return Optional.of(queues.get(partitioner.apply(message)))
+        return Optional.of(queues.get(partitioner.applyAsInt(message)))
                 .map(queue -> queue.publish(message))
                 .orElse(false);
     }
@@ -70,12 +75,14 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
         queues.values().forEach(PartitionQueue::start);
     }
 
-    protected abstract boolean handleMessage(final M message) throws Exception;
-
     @Override
     public void close() {
         queues.values().forEach(PartitionQueue::close);
     }
+
+    protected abstract boolean handleMessage(final M message) throws Exception;
+
+    protected abstract void sidelineMessage(final M message) throws Exception;
 
 
     private static class PartitionQueue<M extends Message> implements AutoCloseable {
@@ -104,7 +111,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
         }
 
         public final void start() {
-            monitorFuture = actor.dispachter.submit(this::monitor);
+            monitorFuture = actor.dispatcher.submit(this::monitor);
         }
 
         public final boolean publish(final M message) {
@@ -114,8 +121,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
                 messages.putIfAbsent(messageId, message);
                 checkCondition.signalAll();
                 return true;
-            }
-            finally {
+            } finally {
                 lock.unlock();
             }
         }
@@ -169,25 +175,25 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
 
         private void handleMessageInternal(final M message) {
             val id = message.id();
-            val policy = new RetryPolicy<Boolean>()
-                    .handleIf(t -> actor.ignoredErrors.stream().anyMatch(e -> ClassUtils.isAssignable(t.getClass(), e)))
-                    .withMaxAttempts(3)
-                    .withDelay(Duration.ofSeconds(1));
             var status = false;
             try {
-                status = Failsafe.with(List.of(policy))
-                        .get(() -> actor.handleMessage(message));
+                status = actor.retryer.execute(() -> actor.handleMessage(message));
             } catch (Exception e) {
                 log.error("Error handling message: " + message.id(), e);
+                status = actor.exceptionHandler.handle();
+            }
+            if (!status) {
+                try {
+                    actor.sidelineMessage(message);
+                } catch (Exception e) {
+                    log.error("Error while sidelining message: " + message.id(), e);
+                }
             }
             lock.lock();
             try {
                 inFlight.remove(id);
-                if (status) {
-                    messages.remove(id);
-                } else {
-                    checkCondition.signalAll(); //Redeliver
-                }
+                messages.remove(id);
+                checkCondition.signalAll(); //Redeliver
             } finally {
                 lock.unlock();
             }
