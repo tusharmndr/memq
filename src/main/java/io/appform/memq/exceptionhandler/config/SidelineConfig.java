@@ -1,7 +1,6 @@
 package io.appform.memq.exceptionhandler.config;
 
 import io.appform.memq.exceptionhandler.ExceptionHandlerType;
-import io.appform.memq.ExecutorConfig;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

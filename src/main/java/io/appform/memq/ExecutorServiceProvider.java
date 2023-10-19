@@ -4,6 +4,6 @@ import java.util.concurrent.ExecutorService;
 
 public interface ExecutorServiceProvider {
 
-    ExecutorService newFixedThreadPool(String name, int coreSize);
+    ExecutorService threadPool(String name, int parallel);
 
 }

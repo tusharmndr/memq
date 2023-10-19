@@ -2,11 +2,11 @@ package io.appform.memq.actor;
 
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.ExecutorConfig;
+import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.config.RetryConfig;
 import lombok.*;
 
-import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -23,7 +23,7 @@ public class ActorConfig {
     @Min(1)
     @Max(100)
     @Builder.Default
-    private Integer partitions = 1;
+    private int partitions = 1;
 
     @NotNull
     @Valid
@@ -32,7 +32,7 @@ public class ActorConfig {
 
     @NotNull
     @Valid
-    private ExceptionHandlerConfig exceptionHandlerConfig;
+    private ExceptionHandlerConfig exceptionHandlerConfig = new SidelineConfig();
 
     @NotNull
     @Valid

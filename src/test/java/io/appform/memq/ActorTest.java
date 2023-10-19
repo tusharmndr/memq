@@ -3,8 +3,6 @@ package io.appform.memq;
 import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.Message;
-import io.appform.memq.exceptionhandler.config.DropConfig;
-import io.appform.memq.exceptionhandler.handlers.MessageDropHandler;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.impl.NoRetryStrategy;
 import lombok.SneakyThrows;
@@ -14,7 +12,6 @@ import lombok.val;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -75,28 +72,18 @@ class ActorTest {
 
 
     private static Actor<TestMessage> adder(final AtomicInteger sum, int partition) {
-        return new Actor<>(Executors.newFixedThreadPool(1024),
+        return new Actor<TestMessage>("Adder",
+                Executors.newFixedThreadPool(1024),
+                message -> true,
+                (message) -> {
+                        sum.addAndGet(message.getValue());
+                        return true;
+                        },
+                (message) -> {},
+                (message, throwable) -> {},
                 new NoRetryStrategy(new NoRetryConfig()),
-                new MessageDropHandler(new DropConfig()),
-                Set.of(),
-                partition, message -> Math.absExact(message.id.hashCode()) % partition) {
-
-            @Override
-            public String name() {
-                return "Adder";
-            }
-
-            @Override
-            protected boolean handleMessage(TestMessage message) {
-                log.info("Received message:{}", message);
-                sum.addAndGet(message.getValue());
-                return true;
-            }
-
-            @Override
-            protected void sidelineMessage(TestMessage record) {
-            }
-        };
+                partition,
+                message -> Math.absExact(message.id.hashCode()) % partition);
     }
 
 }

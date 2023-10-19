@@ -1,58 +1,44 @@
 package io.appform.memq;
 
 
-import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.ActorConfig;
-import io.appform.memq.actor.Message;
-import io.appform.memq.sideline.SidelineStore;
-import io.appform.memq.sideline.impl.NoOpSidelineStore;
+import io.appform.memq.actor.*;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Set;
 import java.util.function.ToIntFunction;
 
 @Slf4j
-public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M extends Message> extends Actor<M> {
+public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M extends Message> {
 
     private final MessageType type;
-    private final SidelineStore<M> sidelineStore;
+    private final Actor<M> actor;
+    private final ActorConfig config;
 
     protected HighLevelActor(MessageType type,
                              ActorConfig actorConfig,
-                             ActorSystem actorSystem,
-                             Set<Class<? extends Throwable>> ignoredErrors) {
-        this(type, actorConfig, actorSystem, ignoredErrors, null, null);
+                             ActorSystem actorSystem) {
+        this(type, actorConfig, actorSystem, null);
     }
 
+    protected abstract boolean handleMessage(final M message);
+
+    protected abstract void handleSideline(final M message);
+
     protected HighLevelActor(MessageType type,
                              ActorConfig actorConfig,
                              ActorSystem actorSystem,
-                             Set<Class<? extends Throwable>> ignoredErrors,
-                             SidelineStore<M> sidelineStore,
                              ToIntFunction<M> partitioner) {
-        super(actorSystem.createOrGetExecutorService(actorConfig.getExecutorConfig().getName()),
-                actorSystem.retryStrategyFactory().create(actorConfig.getRetryConfig()),
-                actorSystem.exceptionHandlingFactory().create(actorConfig.getExceptionHandlerConfig()),
-                ignoredErrors,
-                actorConfig.getPartitions(),
-                partitioner != null ? partitioner
-                        : actorConfig.getPartitions() == 1 ? message -> 0
-                            : message -> Math.absExact(message.id().hashCode()) % actorConfig.getPartitions());
         this.type = type;
-        this.sidelineStore = sidelineStore == null ? new NoOpSidelineStore<>():  sidelineStore;
-        actorSystem.register(this);
-
+        this.config = actorConfig;
+        this.actor = new Actor<M>(type.name(),
+                actorSystem.createOrGetExecutorService(type.name()),
+                message -> true,
+                this::handleMessage,
+                this::handleSideline,
+                actorSystem.createExceptionHandler(actorConfig, this::handleSideline),
+                actorSystem.createRetryer(actorConfig),
+                actorConfig.getPartitions(),
+                actorSystem.partitioner(actorConfig, partitioner));
+        actorSystem.register(actor);
     }
-
-    @Override
-    public String name() {
-        return type.name();
-    }
-
-    @Override
-    protected void sidelineMessage(final M message) throws Exception {
-        sidelineStore.save(message);
-    }
-
 
 }

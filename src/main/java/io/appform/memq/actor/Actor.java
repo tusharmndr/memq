@@ -1,11 +1,9 @@
 package io.appform.memq.actor;
 
 import com.google.common.collect.Sets;
-import io.appform.memq.exceptionhandler.handlers.ExceptionHandler;
 import io.appform.memq.retry.RetryStrategy;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import net.jodah.failsafe.internal.util.Assert;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -14,50 +12,55 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- *
- */
 @Slf4j
-public abstract class Actor<M extends Message> implements AutoCloseable {
+public class Actor<M extends Message> implements AutoCloseable {
+
+    private final String name;
     private final ExecutorService executorService;
-    private final Set<Class<? extends Throwable>> ignoredErrors; //TODO: Irrelevant as there is no serialization/deserialization
     private final ExecutorService dispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
     private final Map<Integer, PartitionQueue<M>> queues; //TODO: Separate is as Mailbox, and take PartitionMailbox by default
+    private final Function<M,Boolean> validationHandler;
+    private final Function<M,Boolean> consumerHandler;
+    private final Consumer<M> sidelineHandler;
+    private final BiConsumer<M,Throwable> exceptionHandler;
     private final RetryStrategy retryer;
-    private final ExceptionHandler exceptionHandler;
-    //TODO: sidelineExecutor
-    //TODO: expiry message
     //TODO: Metrics
 
 
-    protected Actor(ExecutorService executorService,
-                    RetryStrategy retryer,
-                    ExceptionHandler exceptionHandler,
-                    Set<Class<? extends Throwable>> ignoredErrors,
-                    int partitions,
-                    ToIntFunction<M> partitioner) {
-        Assert.notNull(executorService, "Executor service cannot be null");
-        Assert.notNull(retryer, "Retryer cannot be null");
-        Assert.notNull(exceptionHandler, "ExceptionHandler cannot be null");
-        Assert.notNull(partitioner, "Partitioner cannot be null");
+    public Actor(String name,
+                 ExecutorService executorService,
+                 Function<M, Boolean> validationHandler,
+                 Function<M, Boolean> consumerHandler,
+                 Consumer<M> sidelineHandler,
+                 BiConsumer<M, Throwable> exceptionHandler,
+                 RetryStrategy retryer,
+                 int partitions,
+                 ToIntFunction<M> partitioner) {
+        Objects.requireNonNull(name, "Name cannot be null");
+        Objects.requireNonNull(executorService, "Executor service cannot be null");
+        Objects.requireNonNull(partitioner, "Partitioner cannot be null");
+        Objects.requireNonNull(validationHandler, "ValidationHandler cannot be null");
+        Objects.requireNonNull(consumerHandler, "ConsumerHandler cannot be null");
+        Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
+        Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
+        this.name = name;
         this.executorService = executorService;
-        this.ignoredErrors = null != ignoredErrors ? ignoredErrors : Set.of();
-        this.retryer = retryer;
+        this.validationHandler = validationHandler;
+        this.consumerHandler = consumerHandler;
+        this.sidelineHandler = sidelineHandler;
         this.exceptionHandler = exceptionHandler;
         this.dispatcher = Executors.newFixedThreadPool(partitions);
+        this.retryer = retryer;
         this.partitioner = partitioner;
         this.queues = IntStream.range(0, partitions)
                 .boxed()
                 .collect(Collectors.toMap(Function.identity(), i -> new PartitionQueue<M>(this, i)));
     }
-
-    public abstract String name();
 
     public boolean isEmpty() {
         return queues.values()
@@ -80,10 +83,6 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
         queues.values().forEach(PartitionQueue::close);
     }
 
-    protected abstract boolean handleMessage(final M message) throws Exception;
-
-    protected abstract void sidelineMessage(final M message) throws Exception;
-
 
     private static class PartitionQueue<M extends Message> implements AutoCloseable {
 
@@ -98,7 +97,7 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
 
         public PartitionQueue(Actor<M> actor, int partition) {
             this.actor = actor;
-            this.name = actor.name() + "-" + partition;
+            this.name = actor.name + "-" + partition;
         }
 
         public final boolean isEmpty() {
@@ -175,20 +174,27 @@ public abstract class Actor<M extends Message> implements AutoCloseable {
 
         private void handleMessageInternal(final M message) {
             val id = message.id();
-            var status = false;
             try {
-                status = actor.retryer.execute(() -> actor.handleMessage(message));
-            } catch (Exception e) {
-                log.error("Error handling message: " + message.id(), e);
-                status = actor.exceptionHandler.handle();
-            }
-            if (!status) {
-                try {
-                    actor.sidelineMessage(message);
-                } catch (Exception e) {
-                    log.error("Error while sidelining message: " + message.id(), e);
+                boolean valid = actor.validationHandler.apply(message);
+                if (!valid) {
+                    log.debug("Message validation failed for message: {}", message);
+                    //TODO: ADD metrics
+                } else {
+                    val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
+                    if (!status) {
+                        //TODO: ADD metrics
+                        log.debug("Consumer failed for message: {}", message);
+                        actor.sidelineHandler.accept(message);
+                    }
                 }
+            } catch (Exception e) {
+                actor.exceptionHandler.accept(message, e);
+            } finally {
+                releaseMessage(id);
             }
+        }
+
+        private void releaseMessage(String id) {
             lock.lock();
             try {
                 inFlight.remove(id);
