@@ -75,11 +75,11 @@ class ActorTest {
         return new Actor<TestMessage>("Adder",
                 Executors.newFixedThreadPool(1024),
                 message -> true,
-                (message) -> {
+                message -> {
                         sum.addAndGet(message.getValue());
                         return true;
                         },
-                (message) -> {},
+                message -> {},
                 (message, throwable) -> {},
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,

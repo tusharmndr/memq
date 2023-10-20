@@ -59,6 +59,10 @@ public class ActorSystem implements AutoCloseable {
         return retryStrategyFactory.create(actorConfig.getRetryConfig());
     }
 
+    public <M extends Message> Function<M, Boolean> expiryValidator() {
+        return message -> message.validTill() > System.currentTimeMillis();
+    }
+
     public  <M extends Message> BiConsumer<M, Throwable> createExceptionHandler(ActorConfig actorConfig,
                                                                                      Consumer<M> sidelineHandler) {
         ExceptionHandlerConfig exceptionHandlerConfig = actorConfig.getExceptionHandlerConfig();

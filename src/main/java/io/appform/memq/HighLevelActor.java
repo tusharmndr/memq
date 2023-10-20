@@ -31,7 +31,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         this.config = actorConfig;
         this.actor = new Actor<M>(type.name(),
                 actorSystem.createOrGetExecutorService(type.name()),
-                message -> true,
+                actorSystem.expiryValidator(),
                 this::handleMessage,
                 this::handleSideline,
                 actorSystem.createExceptionHandler(actorConfig, this::handleSideline),
@@ -39,6 +39,10 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorConfig.getPartitions(),
                 actorSystem.partitioner(actorConfig, partitioner));
         actorSystem.register(actor);
+    }
+
+    public final boolean publish(final M message) {
+        return actor.publish(message);
     }
 
 }
