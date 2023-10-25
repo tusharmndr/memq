@@ -21,9 +21,9 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     private final String name;
     private final ExecutorService executorService;
-    private final ExecutorService dispatcher; //TODO::Separate dispatch and add NoDispatch flow
+    private final ExecutorService messageDispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
-    private final Map<Integer, PartitionQueue<M>> queues; //TODO: Separate is as Mailbox, and take PartitionMailbox by default
+    private final Map<Integer, UnboundedMailbox<M>> mailboxes;
     private final Function<M,Boolean> validationHandler;
     private final Function<M,Boolean> consumerHandler;
     private final Consumer<M> sidelineHandler;
@@ -54,37 +54,37 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.consumerHandler = consumerHandler;
         this.sidelineHandler = sidelineHandler;
         this.exceptionHandler = exceptionHandler;
-        this.dispatcher = Executors.newFixedThreadPool(partitions);
+        this.messageDispatcher = Executors.newFixedThreadPool(partitions);
         this.retryer = retryer;
         this.partitioner = partitioner;
-        this.queues = IntStream.range(0, partitions)
+        this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
-                .collect(Collectors.toMap(Function.identity(), i -> new PartitionQueue<M>(this, i)));
+                .collect(Collectors.toMap(Function.identity(), i -> new UnboundedMailbox<M>(this, i)));
     }
 
-    public boolean isEmpty() {
-        return queues.values()
+    public final boolean isEmpty() {
+        return mailboxes.values()
                 .stream()
-                .allMatch(PartitionQueue::isEmpty);
+                .allMatch(UnboundedMailbox::isEmpty);
     }
 
     public final boolean publish(final M message) {
-        return Optional.of(queues.get(partitioner.applyAsInt(message)))
+        return Optional.of(mailboxes.get(partitioner.applyAsInt(message)))
                 .map(queue -> queue.publish(message))
                 .orElse(false);
     }
 
-    public void start() {
-        queues.values().forEach(PartitionQueue::start);
+    public final void start() {
+        mailboxes.values().forEach(UnboundedMailbox::start);
     }
 
     @Override
-    public void close() {
-        queues.values().forEach(PartitionQueue::close);
+    public final void close() {
+        mailboxes.values().forEach(UnboundedMailbox::close);
     }
 
 
-    private static class PartitionQueue<M extends Message> implements AutoCloseable {
+    private static class UnboundedMailbox<M extends Message> implements AutoCloseable {
 
         private final Actor<M> actor;
         private final String name;
@@ -95,7 +95,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
 
-        public PartitionQueue(Actor<M> actor, int partition) {
+        public UnboundedMailbox(Actor<M> actor, int partition) {
             this.actor = actor;
             this.name = actor.name + "-" + partition;
         }
@@ -110,7 +110,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         public final void start() {
-            monitorFuture = actor.dispatcher.submit(this::monitor);
+            monitorFuture = actor.messageDispatcher.submit(this::monitor);
         }
 
         public final boolean publish(final M message) {
@@ -158,7 +158,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     inFlight.addAll(newMessages);
                     newMessages.forEach(m -> actor.executorService.submit(() -> {
                         try {
-                            this.handleMessageInternal(messages.get(m));
+                            this.process(messages.get(m));
                         } catch (Throwable throwable) {
                             log.error("Error", throwable);
                         }
@@ -172,17 +172,15 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
         }
 
-        private void handleMessageInternal(final M message) {
+        private void process(final M message) {
             val id = message.id();
             try {
                 boolean valid = actor.validationHandler.apply(message);
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
-                    //TODO: ADD metrics
                 } else {
                     val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
-                        //TODO: ADD metrics
                         log.debug("Consumer failed for message: {}", message);
                         actor.sidelineHandler.accept(message);
                     }

@@ -3,13 +3,11 @@
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
-import io.dropwizard.util.Duration;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
-import javax.validation.Valid;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.util.Set;
