@@ -1,7 +1,6 @@
 package io.appform.memq.actor;
 
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
-import io.appform.memq.ExecutorConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.config.RetryConfig;
@@ -35,7 +34,6 @@ public class ActorConfig {
     private ExceptionHandlerConfig exceptionHandlerConfig = new SidelineConfig();
 
     @NotNull
-    @Valid
-    private ExecutorConfig executorConfig;
+    private String executorName;
 
 }

@@ -1,4 +1,4 @@
-package io.appform.memq;
+package io.appform;
 
 import java.util.concurrent.ExecutorService;
 

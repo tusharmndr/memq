@@ -1,8 +1,10 @@
 package io.appform.memq;
 
 
-import io.appform.memq.actor.*;
 import lombok.extern.slf4j.Slf4j;
+import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.ActorConfig;
+import io.appform.memq.actor.Message;
 
 import java.util.function.ToIntFunction;
 
@@ -30,8 +32,8 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         this.type = type;
         this.config = actorConfig;
         this.actor = new Actor<M>(type.name(),
-                actorSystem.createOrGetExecutorService(type.name()),
-                actorSystem.expiryValidator(),
+                actorSystem.createOrGetExecutorService(actorConfig),
+                actorSystem.expiryValidator(actorConfig),
                 this::handleMessage,
                 this::handleSideline,
                 actorSystem.createExceptionHandler(actorConfig, this::handleSideline),
