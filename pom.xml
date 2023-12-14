@@ -20,8 +20,6 @@
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <junit.version>5.8.2</junit.version>
         <jakarta.validation.version>2.0.2</jakarta.validation.version>
-        <signals.version>1.4</signals.version>
-        <function-metrics.version>1.0.13</function-metrics.version>
         <awaitility.version>4.2.0</awaitility.version>
         <guice.version>5.1.0</guice.version>
         <dw-guicey.version>5.5.0</dw-guicey.version>
@@ -120,6 +118,11 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>2.10.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics-core.version}</version>
         </dependency>
     </dependencies>
 

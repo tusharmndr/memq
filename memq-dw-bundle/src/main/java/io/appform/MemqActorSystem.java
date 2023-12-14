@@ -1,5 +1,6 @@
 package io.appform;
 
+import com.codahale.metrics.MetricRegistry;
 import io.appform.config.ExecutorConfig;
 import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
@@ -26,19 +27,22 @@ public class MemqActorSystem implements ActorSystem, Managed {
     private final Map<String, ExecutorConfig> executorConfigMap;
     private final List<Actor<?>> registeredActors;
     private final RetryStrategyFactory retryStrategyFactory;
+    private final MetricRegistry metricRegistry;
 
     public MemqActorSystem(MemqConfig memqConfig) {
-        this(memqConfig, (name, parallel) -> Executors.newFixedThreadPool(parallel));
+        this(memqConfig, (name, parallel) -> Executors.newFixedThreadPool(parallel), new MetricRegistry());
     }
 
     public MemqActorSystem(MemqConfig memqConfig,
-                           ExecutorServiceProvider executorServiceProvider) {
+                           ExecutorServiceProvider executorServiceProvider,
+                           MetricRegistry metricRegistry) {
         this.executorServiceProvider = executorServiceProvider;
         this.executorConfigMap = memqConfig.getExecutors().stream()
                 .collect(Collectors.toMap(ExecutorConfig::getName, Function.identity()));
         this.executors = new ConcurrentHashMap<>();
         this.registeredActors = new ArrayList<>();
         this.retryStrategyFactory = new RetryStrategyFactory();
+        this.metricRegistry = metricRegistry;
     }
 
     //System shutdown
@@ -63,6 +67,11 @@ public class MemqActorSystem implements ActorSystem, Managed {
     @Override
     public final RetryStrategy createRetryer(ActorConfig actorConfig) {
         return retryStrategyFactory.create(actorConfig.getRetryConfig());
+    }
+
+    @Override
+    public MetricRegistry metricRegistry() {
+        return metricRegistry;
     }
 
     private int determineThreadPoolSize(String name) {

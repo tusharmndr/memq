@@ -1,5 +1,6 @@
 package io.appform.memq;
 
+import com.codahale.metrics.MetricRegistry;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.ActorConfig;
 import io.appform.memq.actor.Message;
@@ -22,6 +23,8 @@ public interface ActorSystem extends AutoCloseable {
     ExecutorService createOrGetExecutorService(ActorConfig config);
 
     RetryStrategy createRetryer(ActorConfig actorConfig);
+
+    MetricRegistry metricRegistry();
 
     default <M extends Message> Function<M, Boolean> expiryValidator(ActorConfig actorConfig) {
         return message -> message.validTill() > System.currentTimeMillis();

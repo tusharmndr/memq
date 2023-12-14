@@ -1,7 +1,11 @@
 package io.appform.memq.actor;
 
+import com.codahale.metrics.MetricRegistry;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
 import io.appform.memq.retry.RetryStrategy;
+import io.appform.memq.stats.ActorMetrics;
+import io.appform.memq.stats.impl.ActorMetricsImpl;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
@@ -29,7 +33,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final Consumer<M> sidelineHandler;
     private final BiConsumer<M,Throwable> exceptionHandler;
     private final RetryStrategy retryer;
-    //TODO: Metrics
+    private final ActorMetrics metrics;
 
 
     public Actor(String name,
@@ -40,7 +44,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                  BiConsumer<M, Throwable> exceptionHandler,
                  RetryStrategy retryer,
                  int partitions,
-                 ToIntFunction<M> partitioner) {
+                 ToIntFunction<M> partitioner,
+                 MetricRegistry metricRegistry) {
         Objects.requireNonNull(name, "Name cannot be null");
         Objects.requireNonNull(executorService, "Executor service cannot be null");
         Objects.requireNonNull(partitioner, "Partitioner cannot be null");
@@ -48,6 +53,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         Objects.requireNonNull(consumerHandler, "ConsumerHandler cannot be null");
         Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
+        Objects.requireNonNull(metricRegistry, "Metric Registry cannot be null");
         this.name = name;
         this.executorService = executorService;
         this.validationHandler = validationHandler;
@@ -60,6 +66,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
                 .collect(Collectors.toMap(Function.identity(), i -> new UnboundedMailbox<M>(this, i)));
+        this.metrics = new ActorMetricsImpl(metricRegistry, name, this::size);
     }
 
     public final boolean isEmpty() {
@@ -68,9 +75,24 @@ public class Actor<M extends Message> implements AutoCloseable {
                 .allMatch(UnboundedMailbox::isEmpty);
     }
 
+    public final long size() {
+        return mailboxes.values()
+                .stream()
+                .map(UnboundedMailbox::size)
+                .count();
+    }
+
     public final boolean publish(final M message) {
         return Optional.of(mailboxes.get(partitioner.applyAsInt(message)))
                 .map(queue -> queue.publish(message))
+                .map( res -> {
+                    if (res) {
+                        metrics.markPublishSuccess();
+                    } else {
+                        metrics.markPublishFailed();
+                    }
+                    return res;
+                })
                 .orElse(false);
     }
 
@@ -107,6 +129,10 @@ public class Actor<M extends Message> implements AutoCloseable {
             } finally {
                 lock.unlock();
             }
+        }
+
+        public final long size() {
+            return messages.size();
         }
 
         public final void start() {
@@ -173,6 +199,8 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         private void process(final M message) {
+            final Stopwatch stopwatch = Stopwatch.createStarted();
+            actor.metrics.markProcessing();
             val id = message.id();
             try {
                 boolean valid = actor.validationHandler.apply(message);
@@ -182,6 +210,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
+                        actor.metrics.markSideline();
                         actor.sidelineHandler.accept(message);
                     }
                 }
@@ -189,6 +218,9 @@ public class Actor<M extends Message> implements AutoCloseable {
                 actor.exceptionHandler.accept(message, e);
             } finally {
                 releaseMessage(id);
+                stopwatch.stop();
+                actor.metrics.markReleased();
+                actor.metrics.updateProcessTime(stopwatch.elapsed());
             }
         }
 

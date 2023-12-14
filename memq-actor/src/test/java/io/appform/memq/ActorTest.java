@@ -1,5 +1,6 @@
 package io.appform.memq;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.Message;
@@ -83,7 +84,8 @@ class ActorTest {
                 (message, throwable) -> {},
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,
-                message -> Math.absExact(message.id.hashCode()) % partition);
+                message -> Math.absExact(message.id.hashCode()) % partition,
+                new MetricRegistry());
     }
 
 }
