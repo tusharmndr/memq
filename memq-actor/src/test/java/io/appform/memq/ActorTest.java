@@ -13,6 +13,7 @@ import lombok.val;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,7 +86,8 @@ class ActorTest {
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,
                 message -> Math.absExact(message.id.hashCode()) % partition,
-                new MetricRegistry());
+                new MetricRegistry(),
+                new ArrayList<>());
     }
 
 }

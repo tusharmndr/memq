@@ -36,4 +36,6 @@ public class ActorConfig {
     @NotNull
     private String executorName;
 
+    private boolean metricEnabled;
+
 }

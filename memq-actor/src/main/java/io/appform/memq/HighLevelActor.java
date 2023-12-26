@@ -40,7 +40,8 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createRetryer(actorConfig),
                 actorConfig.getPartitions(),
                 actorSystem.partitioner(actorConfig, partitioner),
-                actorSystem.metricRegistry());
+                actorSystem.metricRegistry(),
+                actorSystem.observers(actorConfig));
         actorSystem.register(actor);
     }
 

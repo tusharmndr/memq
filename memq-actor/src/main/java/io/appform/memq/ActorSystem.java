@@ -8,8 +8,10 @@ import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
+import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -25,6 +27,10 @@ public interface ActorSystem extends AutoCloseable {
     RetryStrategy createRetryer(ActorConfig actorConfig);
 
     MetricRegistry metricRegistry();
+
+    default List<ActorObserver> observers(ActorConfig config) {
+        return new ArrayList<>();
+    }
 
     default <M extends Message> Function<M, Boolean> expiryValidator(ActorConfig actorConfig) {
         return message -> message.validTill() > System.currentTimeMillis();
