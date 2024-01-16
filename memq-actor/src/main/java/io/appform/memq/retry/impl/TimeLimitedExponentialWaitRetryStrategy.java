@@ -17,7 +17,7 @@ public class TimeLimitedExponentialWaitRetryStrategy extends RetryStrategy {
                 .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
                 .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
                 .withBackoff(config.getDelayInMillis(),
-                    config.getDelayInMillis(),
+                    config.getMaxDelayInMillis(),
                     ChronoUnit.MILLIS,
                     config.getMultipier())
         );

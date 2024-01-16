@@ -19,7 +19,7 @@ public class CountLimitedExponentialWaitRetryStrategy extends RetryStrategy {
                 .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
                 .withMaxAttempts(config.getMaxAttempts())
                 .withBackoff(config.getDelayInMillis(),
-                        config.getDelayInMillis(),
+                        config.getMaxDelayInMillis(),
                         ChronoUnit.MILLIS,
                         config.getMultipier())
         );

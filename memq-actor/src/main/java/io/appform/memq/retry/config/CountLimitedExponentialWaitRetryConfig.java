@@ -25,6 +25,10 @@ public class CountLimitedExponentialWaitRetryConfig extends RetryConfig {
     @Builder.Default
     int delayInMillis = 1;
 
+    @Min(2)
+    @Builder.Default
+    int maxDelayInMillis = 2;
+
     @Min(1)
     @Builder.Default
     int maxTimeInMillisBetweenRetries = 1;
