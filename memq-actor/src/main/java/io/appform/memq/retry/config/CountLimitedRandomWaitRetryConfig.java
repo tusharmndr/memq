@@ -3,8 +3,10 @@
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
-import lombok.*;
-
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import javax.validation.constraints.Min;
 import java.util.Set;

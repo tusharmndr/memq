@@ -4,6 +4,7 @@ import com.codahale.metrics.MetricRegistry;
 import io.appform.config.ExecutorConfig;
 import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
+import io.appform.memq.Constants;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.ActorConfig;
 import io.appform.memq.retry.RetryStrategy;
@@ -12,11 +13,13 @@ import io.dropwizard.lifecycle.Managed;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -75,7 +78,7 @@ public class MemqActorSystem implements ActorSystem, Managed {
     }
 
     private int determineThreadPoolSize(String name) {
-        return executorConfigMap.getOrDefault(name, new ExecutorConfig(name, 10))
+        return executorConfigMap.getOrDefault(name, new ExecutorConfig(name, Constants.DEFAULT_THREADPOOL))
                 .getThreadPoolSize();
     }
 

@@ -1,12 +1,10 @@
 package io.appform.memq.actor;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Sets;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import io.appform.memq.observer.TerminalActorObserver;
 import io.appform.memq.retry.RetryStrategy;
-import io.appform.memq.stats.ActorMetricObserver;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
@@ -17,7 +15,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -46,7 +47,6 @@ public class Actor<M extends Message> implements AutoCloseable {
                  RetryStrategy retryer,
                  int partitions,
                  ToIntFunction<M> partitioner,
-                 MetricRegistry metricRegistry,
                  List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
         Objects.requireNonNull(executorService, "Executor service cannot be null");
@@ -55,7 +55,6 @@ public class Actor<M extends Message> implements AutoCloseable {
         Objects.requireNonNull(consumerHandler, "ConsumerHandler cannot be null");
         Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
-        Objects.requireNonNull(metricRegistry, "Metric Registry cannot be null");
         this.name = name;
         this.executorService = executorService;
         this.validationHandler = validationHandler;
@@ -68,7 +67,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
                 .collect(Collectors.toMap(Function.identity(), i -> new UnboundedMailbox<M>(this, i)));
-        this.rootObserver = setupObserver(observers, metricRegistry);
+        this.rootObserver = setupObserver(observers);
     }
 
     public final boolean isEmpty() {
@@ -84,13 +83,12 @@ public class Actor<M extends Message> implements AutoCloseable {
                 .count();
     }
 
-    public final boolean publish(final M message) {
-        return rootObserver.executePublish(ActorObserverContext.builder()
+    public final void publish(final M message) {
+        rootObserver.execute(ActorObserverContext.builder()
                         .operation(ActorOperation.PUBLISH)
                         .build(),
-                () -> Optional.of(mailboxes.get(partitioner.applyAsInt(message)))
-                        .map(queue -> queue.publish(message))
-                        .orElse(false));
+                () -> mailboxes.get(partitioner.applyAsInt(message))
+                        .publish(message));
     }
 
     public final void start() {
@@ -103,20 +101,19 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
 
-    private ActorObserver setupObserver(List<ActorObserver> observers, MetricRegistry metricRegistry) {
+    private ActorObserver setupObserver(List<ActorObserver> observers) {
         //Terminal observer calls the actual method
         ActorObserver startObserver = new TerminalActorObserver();
+        startObserver.initialize(this); //initializing terminal observer
         if(observers != null) {
             for (var observer : observers) {
                 if (null == observer) {
                     continue;
                 }
                 startObserver = observer.setNext(startObserver);
+                startObserver.initialize(this); //initializing new observer
             }
         }
-        //TODO: disable metric for any actor
-        startObserver = new ActorMetricObserver(name, this::size, metricRegistry)
-                .setNext(startObserver);
         return startObserver;
     }
 
@@ -153,13 +150,12 @@ public class Actor<M extends Message> implements AutoCloseable {
             monitorFuture = actor.messageDispatcher.submit(this::monitor);
         }
 
-        public final boolean publish(final M message) {
+        public final void publish(final M message) {
             lock.lock();
             try {
                 val messageId = message.id();
                 messages.putIfAbsent(messageId, message);
                 checkCondition.signalAll();
-                return true;
             } finally {
                 lock.unlock();
             }
@@ -198,7 +194,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     inFlight.addAll(newMessages);
                     newMessages.forEach(m -> actor.executorService.submit(() -> {
                         try {
-                            actor.rootObserver.executeConsume(ActorObserverContext.builder()
+                            actor.rootObserver.execute(ActorObserverContext.builder()
                                             .operation(ActorOperation.CONSUME)
                                             .build(),
                                     () -> this.process(messages.get(m)));
@@ -225,14 +221,14 @@ public class Actor<M extends Message> implements AutoCloseable {
                     val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
-                        actor.rootObserver.executeSideline(ActorObserverContext.builder()
+                        actor.rootObserver.execute(ActorObserverContext.builder()
                                         .operation(ActorOperation.SIDELINE)
                                         .build(),
                                 () -> actor.sidelineHandler.accept(message));
                     }
                 }
             } catch (Exception e) {
-                actor.rootObserver.executeExceptionHandler(ActorObserverContext.builder()
+                actor.rootObserver.execute(ActorObserverContext.builder()
                                 .operation(ActorOperation.HANDLE_EXCEPTION)
                                 .build(),
                         () -> actor.exceptionHandler.accept(message, e));

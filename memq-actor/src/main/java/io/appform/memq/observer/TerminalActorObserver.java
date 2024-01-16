@@ -1,7 +1,8 @@
 package io.appform.memq.observer;
 
 
-import java.util.function.BooleanSupplier;
+import io.appform.memq.actor.Actor;
+
 
 public final class TerminalActorObserver extends ActorObserver {
     public TerminalActorObserver() {
@@ -9,22 +10,11 @@ public final class TerminalActorObserver extends ActorObserver {
     }
 
     @Override
-    public Boolean executePublish(final ActorObserverContext context, final BooleanSupplier supplier) {
-        return proceedPublish(context, supplier);
+    public void initialize(Actor actor) {
     }
 
     @Override
-    public void executeConsume(final ActorObserverContext context, final Runnable runnable) {
-        proceedConsume(context, runnable);
-    }
-
-    @Override
-    public void executeSideline(ActorObserverContext context, Runnable runnable) {
-        proceedSideline(context, runnable);
-    }
-
-    @Override
-    public void executeExceptionHandler(ActorObserverContext context, Runnable runnable) {
-        proceedExceptionHandler(context, runnable);
+    public void execute(final ActorObserverContext context, final Runnable runnable) {
+        proceed(context, runnable);
     }
 }

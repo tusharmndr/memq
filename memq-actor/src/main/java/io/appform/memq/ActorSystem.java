@@ -5,11 +5,13 @@ import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.ActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.exceptionhandler.config.DropConfig;
-import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
+import io.appform.memq.stats.ActorMetricObserver;
+import lombok.val;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -28,8 +30,11 @@ public interface ActorSystem extends AutoCloseable {
 
     MetricRegistry metricRegistry();
 
-    default List<ActorObserver> observers(ActorConfig config) {
-        return new ArrayList<>();
+    default List<ActorObserver> observers(String name, ActorConfig config) {
+        if(config.isMetricDisabled()) {
+            return new ArrayList<>();
+        }
+        return List.of(new ActorMetricObserver(name, metricRegistry()));
     }
 
     default <M extends Message> Function<M, Boolean> expiryValidator(ActorConfig actorConfig) {
@@ -38,7 +43,7 @@ public interface ActorSystem extends AutoCloseable {
 
     default <M extends Message>  BiConsumer<M, Throwable> createExceptionHandler(ActorConfig actorConfig,
                                                              Consumer<M> sidelineHandler) {
-        ExceptionHandlerConfig exceptionHandlerConfig = actorConfig.getExceptionHandlerConfig();
+        val exceptionHandlerConfig = actorConfig.getExceptionHandlerConfig();
         return exceptionHandlerConfig.accept(new ExceptionHandlerConfigVisitor<>() {
             @Override
             public BiConsumer<M, Throwable> visit(DropConfig config) {
@@ -56,7 +61,7 @@ public interface ActorSystem extends AutoCloseable {
     default <M extends Message> ToIntFunction<M> partitioner(ActorConfig actorConfig,
                                                              ToIntFunction<M> partitioner) {
         return partitioner != null ? partitioner
-                : actorConfig.getPartitions() == 1 ? message -> 0
+                : actorConfig.getPartitions() == Constants.SINGLE_PARTITION ? message -> Constants.DEFAULT_PARTITION_INDEX
                 : message -> Math.absExact(message.id().hashCode()) % actorConfig.getPartitions();
     }
 

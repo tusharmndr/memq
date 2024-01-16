@@ -1,6 +1,5 @@
 package io.appform.memq;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.Message;
@@ -20,7 +19,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -60,7 +58,7 @@ class ActorTest {
             a.start();
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
-                    .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> assertTrue(a.publish(new TestMessage(1))))));
+                    .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> a.publish(new TestMessage(1)))));
             Awaitility.await()
                     .forever()
                     .catchUncaughtExceptions()
@@ -86,7 +84,6 @@ class ActorTest {
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,
                 message -> Math.absExact(message.id.hashCode()) % partition,
-                new MetricRegistry(),
                 new ArrayList<>());
     }
 

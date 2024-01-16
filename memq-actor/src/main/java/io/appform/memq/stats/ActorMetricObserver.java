@@ -2,6 +2,7 @@ package io.appform.memq.stats;
 
 
 import com.codahale.metrics.*;
+import io.appform.memq.actor.Actor;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import lombok.Getter;
@@ -11,8 +12,6 @@ import lombok.val;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-import java.util.function.LongSupplier;
 
 @Slf4j
 public class ActorMetricObserver extends ActorObserver {
@@ -27,56 +26,27 @@ public class ActorMetricObserver extends ActorObserver {
     private final Map<MetricKeyData, MetricData> metricCache = new ConcurrentHashMap<>();
 
     public ActorMetricObserver(final String actorName,
-                               final LongSupplier sizeSupplier,
                                final MetricRegistry metricRegistry) {
         super(null);
         this.metricRegistry = metricRegistry;
         this.actorName = actorName;
+
+    }
+
+    @Override
+    public void initialize(Actor actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
                 (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
                         new CachedGauge<>(1, TimeUnit.SECONDS) {
                             @Override
                             protected Long loadValue() {
-                                return sizeSupplier.getAsLong();
+                                return actor.size();
                             }
                         });
     }
 
     @Override
-    public Boolean executePublish(final ActorObserverContext context,
-                                final BooleanSupplier supplier) {
-        val metricData = getMetricData(context);
-        metricData.getTotal().mark();
-        val timer = metricData.getTimer().time();
-        try {
-            val response = proceedPublish(context, supplier);
-            if (response) {
-                metricData.getSuccess().mark();
-            } else {
-                metricData.getFailed().mark();
-            }
-            return response;
-        } catch (Throwable t) {
-            metricData.getFailed().mark();
-            throw t;
-        } finally {
-            timer.stop();
-        }
-    }
-
-    @Override
-    public void executeConsume(ActorObserverContext context,
-                               Runnable runnable) {
-        metered(context, runnable);
-    }
-
-    @Override
-    public void executeSideline(ActorObserverContext context, Runnable runnable) {
-        metered(context, runnable);
-    }
-
-    @Override
-    public void executeExceptionHandler(ActorObserverContext context, Runnable runnable) {
+    public void execute(final ActorObserverContext context, final Runnable runnable) {
         metered(context, runnable);
     }
 
@@ -85,7 +55,7 @@ public class ActorMetricObserver extends ActorObserver {
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
         try {
-            proceedConsume(context, runnable);
+            proceed(context, runnable);
             metricData.getSuccess().mark();
         } catch (Throwable t) {
             metricData.getFailed().mark();

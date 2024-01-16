@@ -1,10 +1,10 @@
 package io.appform.memq;
 
 
-import lombok.extern.slf4j.Slf4j;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.ActorConfig;
 import io.appform.memq.actor.Message;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.ToIntFunction;
 
@@ -23,7 +23,9 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
 
     protected abstract boolean handleMessage(final M message);
 
-    protected abstract void handleSideline(final M message);
+    protected void handleSideline(final M message) {
+        log.warn("skipping sideline for actor:{} message:{}", type.name(), message);
+    }
 
     protected HighLevelActor(MessageType type,
                              ActorConfig actorConfig,
@@ -40,13 +42,13 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createRetryer(actorConfig),
                 actorConfig.getPartitions(),
                 actorSystem.partitioner(actorConfig, partitioner),
-                actorSystem.metricRegistry(),
-                actorSystem.observers(actorConfig));
+                actorSystem.observers(type.name(), actorConfig));
         actorSystem.register(actor);
     }
 
     public final boolean publish(final M message) {
-        return actor.publish(message);
+         actor.publish(message);
+         return true;
     }
 
 }
