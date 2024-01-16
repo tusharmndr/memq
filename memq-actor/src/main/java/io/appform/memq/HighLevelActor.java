@@ -4,6 +4,7 @@ package io.appform.memq;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.ActorConfig;
 import io.appform.memq.actor.Message;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.ToIntFunction;
@@ -11,6 +12,7 @@ import java.util.function.ToIntFunction;
 @Slf4j
 public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M extends Message> {
 
+    @Getter
     private final MessageType type;
     private final Actor<M> actor;
     private final ActorConfig config;
