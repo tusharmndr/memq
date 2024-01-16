@@ -58,6 +58,7 @@ public class MemqActorSystem implements ActorSystem, Managed {
     @Override
     public final void register(Actor<?> actor) {
         registeredActors.add(actor);
+        actor.start(); //Starting actor during registration
     }
 
     @Override
@@ -84,8 +85,7 @@ public class MemqActorSystem implements ActorSystem, Managed {
 
     @Override
     public void start() {
-        registeredActors.forEach(Actor::start);
-        log.info("Started Memq Actor System");
+        log.info("Started Memq Actor System"); //Note: None of the actors are register for now, actors will be started during registration
     }
 
     @Override
