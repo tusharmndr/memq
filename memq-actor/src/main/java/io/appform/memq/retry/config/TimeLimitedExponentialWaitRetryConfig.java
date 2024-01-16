@@ -26,7 +26,7 @@ public class TimeLimitedExponentialWaitRetryConfig extends RetryConfig {
 
     @Min(2)
     @Builder.Default
-    int maxDelayInMillis = 2;
+    int maxDelayInMillis = 100;
 
     @Min(1)
     @Builder.Default
