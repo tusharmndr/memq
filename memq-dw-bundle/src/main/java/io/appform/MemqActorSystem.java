@@ -84,6 +84,7 @@ public class MemqActorSystem implements ActorSystem, Managed {
 
     @Override
     public void start() {
+        registeredActors.forEach(Actor::start);
         log.info("Started Memq Actor System");
     }
 
