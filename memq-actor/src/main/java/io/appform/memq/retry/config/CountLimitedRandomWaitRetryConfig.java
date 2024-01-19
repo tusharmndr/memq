@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
@@ -7,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.constraints.Min;
 import java.util.Set;
@@ -28,15 +27,13 @@ public class CountLimitedRandomWaitRetryConfig extends RetryConfig {
     @Builder.Default
     int maxDelayInMillis = 1;
 
-    public CountLimitedRandomWaitRetryConfig() {
-        super(RetryType.COUNT_LIMITED_RANDOM_WAIT);
-    }
-
     @Builder
-    public CountLimitedRandomWaitRetryConfig(int maxAttempts,
-                                             int minDelayInMillis,
-                                             int maxDelayInMillis,
-                                             Set<String> retriableExceptions) {
+    @Jacksonized
+    CountLimitedRandomWaitRetryConfig(
+            int maxAttempts,
+            int minDelayInMillis,
+            int maxDelayInMillis,
+            Set<String> retriableExceptions) {
         super(RetryType.COUNT_LIMITED_RANDOM_WAIT, retriableExceptions);
         this.maxAttempts = maxAttempts;
         this.minDelayInMillis = minDelayInMillis;

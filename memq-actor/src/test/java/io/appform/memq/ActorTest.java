@@ -26,15 +26,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Slf4j
 class ActorTest {
 
-    @Value
-    private static class TestMessage implements Message {
-        int value;
-        String id = UUID.randomUUID().toString();
-
-        @Override
-        public String id() {
-            return id;
-        }
+    private static Actor<TestMessage> adder(final AtomicInteger sum, int partition) {
+        return new Actor<TestMessage>("Adder",
+                                      Executors.newFixedThreadPool(1024),
+                                      message -> true,
+                                      message -> {
+                                          sum.addAndGet(message.getValue());
+                                          return true;
+                                      },
+                                      message -> {},
+                                      (message, throwable) -> {},
+                                      new NoRetryStrategy(new NoRetryConfig()),
+                                      partition,
+                                      message -> Math.absExact(message.id.hashCode()) % partition,
+                                      new ArrayList<>());
     }
 
     @Test
@@ -58,33 +63,29 @@ class ActorTest {
             a.start();
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
-                    .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> a.publish(new TestMessage(1)))));
+                    .forEach(i -> IntStream.rangeClosed(1, 1000)
+                            .forEach(j -> tp.submit(() -> a.publish(new TestMessage(1)))));
             Awaitility.await()
                     .forever()
                     .catchUncaughtExceptions()
                     .until(a::isEmpty);
             log.info("Test took {} ms", s.elapsed().toMillis());
             assertEquals(10_000, sum.get());
-        } finally {
+        }
+        finally {
             tp.shutdownNow();
         }
     }
 
+    @Value
+    private static class TestMessage implements Message {
+        int value;
+        String id = UUID.randomUUID().toString();
 
-    private static Actor<TestMessage> adder(final AtomicInteger sum, int partition) {
-        return new Actor<TestMessage>("Adder",
-                Executors.newFixedThreadPool(1024),
-                message -> true,
-                message -> {
-                        sum.addAndGet(message.getValue());
-                        return true;
-                        },
-                message -> {},
-                (message, throwable) -> {},
-                new NoRetryStrategy(new NoRetryConfig()),
-                partition,
-                message -> Math.absExact(message.id.hashCode()) % partition,
-                new ArrayList<>());
+        @Override
+        public String id() {
+            return id;
+        }
     }
 
 }

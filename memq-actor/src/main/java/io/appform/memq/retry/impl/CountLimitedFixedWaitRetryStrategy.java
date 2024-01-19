@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.impl;
 
 import io.appform.memq.retry.RetryStrategy;
@@ -14,9 +12,9 @@ import java.time.temporal.ChronoUnit;
 public class CountLimitedFixedWaitRetryStrategy extends RetryStrategy {
     public CountLimitedFixedWaitRetryStrategy(CountLimitedFixedWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
-                .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                .withMaxAttempts(config.getMaxAttempts())
-                .withDelay(Duration.of(config.getDelayInMillis(), ChronoUnit.MILLIS))
-        );
+                      .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
+                      .withMaxAttempts(config.getMaxAttempts())
+                      .withDelay(Duration.of(config.getDelayInMillis(), ChronoUnit.MILLIS))
+             );
     }
 }

@@ -15,12 +15,32 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
     @Getter
     private final MessageType type;
     private final Actor<M> actor;
-    private final ActorConfig config;
 
-    protected HighLevelActor(MessageType type,
-                             ActorConfig actorConfig,
-                             ActorSystem actorSystem) {
+    @SuppressWarnings("unused")
+    protected HighLevelActor(
+            MessageType type,
+            ActorConfig actorConfig,
+            ActorSystem actorSystem) {
         this(type, actorConfig, actorSystem, null);
+    }
+
+    protected HighLevelActor(
+            MessageType type,
+            ActorConfig actorConfig,
+            ActorSystem actorSystem,
+            ToIntFunction<M> partitioner) {
+        this.type = type;
+        this.actor = new Actor<>(type.name(),
+                                  actorSystem.createOrGetExecutorService(actorConfig),
+                                  actorSystem.expiryValidator(actorConfig),
+                                  this::handle,
+                                  this::sideline,
+                                  actorSystem.createExceptionHandler(actorConfig, this::sideline),
+                                  actorSystem.createRetryer(actorConfig),
+                                  actorConfig.getPartitions(),
+                                  actorSystem.partitioner(actorConfig, partitioner),
+                                  actorSystem.observers(type.name(), actorConfig));
+        actorSystem.register(actor);
     }
 
     protected abstract boolean handle(final M message);
@@ -29,28 +49,9 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         log.warn("skipping sideline for actor:{} message:{}", type.name(), message);
     }
 
-    protected HighLevelActor(MessageType type,
-                             ActorConfig actorConfig,
-                             ActorSystem actorSystem,
-                             ToIntFunction<M> partitioner) {
-        this.type = type;
-        this.config = actorConfig;
-        this.actor = new Actor<M>(type.name(),
-                actorSystem.createOrGetExecutorService(actorConfig),
-                actorSystem.expiryValidator(actorConfig),
-                this::handle,
-                this::sideline,
-                actorSystem.createExceptionHandler(actorConfig, this::sideline),
-                actorSystem.createRetryer(actorConfig),
-                actorConfig.getPartitions(),
-                actorSystem.partitioner(actorConfig, partitioner),
-                actorSystem.observers(type.name(), actorConfig));
-        actorSystem.register(actor);
-    }
-
     public final boolean publish(final M message) {
-         actor.publish(message);
-         return true;
+        actor.publish(message);
+        return true;
     }
 
 }

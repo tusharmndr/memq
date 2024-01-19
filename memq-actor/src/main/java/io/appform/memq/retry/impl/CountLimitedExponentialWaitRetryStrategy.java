@@ -1,4 +1,3 @@
-
 package io.appform.memq.retry.impl;
 
 
@@ -16,12 +15,12 @@ public class CountLimitedExponentialWaitRetryStrategy extends RetryStrategy {
 
     public CountLimitedExponentialWaitRetryStrategy(CountLimitedExponentialWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
-                .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                .withMaxAttempts(config.getMaxAttempts())
-                .withBackoff(config.getDelayInMillis(),
-                        config.getMaxDelayInMillis(),
-                        ChronoUnit.MILLIS,
-                        config.getMultipier())
-        );
+                      .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
+                      .withMaxAttempts(config.getMaxAttempts())
+                      .withBackoff(config.getDelayInMillis(),
+                                   config.getMaxDelayInMillis(),
+                                   ChronoUnit.MILLIS,
+                                   config.getMultipier())
+             );
     }
 }

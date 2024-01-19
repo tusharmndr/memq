@@ -8,11 +8,11 @@ import java.util.concurrent.Callable;
 
 public abstract class RetryStrategy {
 
-   private RetryPolicy<Boolean> policy;
+    private RetryPolicy<Boolean> policy;
 
-   protected RetryStrategy(RetryPolicy<Boolean> policy) {
-       this.policy = policy;
-   }
+    protected RetryStrategy(RetryPolicy<Boolean> policy) {
+        this.policy = policy;
+    }
 
     public boolean execute(Callable<Boolean> callable) {
         return Failsafe.with(policy)

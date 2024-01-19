@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.impl;
 
 
@@ -14,12 +12,12 @@ import java.time.temporal.ChronoUnit;
 public class TimeLimitedExponentialWaitRetryStrategy extends RetryStrategy {
     public TimeLimitedExponentialWaitRetryStrategy(TimeLimitedExponentialWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
-                .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
-                .withBackoff(config.getDelayInMillis(),
-                    config.getMaxDelayInMillis(),
-                    ChronoUnit.MILLIS,
-                    config.getMultipier())
-        );
+                      .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
+                      .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
+                      .withBackoff(config.getDelayInMillis(),
+                                   config.getMaxDelayInMillis(),
+                                   ChronoUnit.MILLIS,
+                                   config.getMultipier())
+             );
     }
 }

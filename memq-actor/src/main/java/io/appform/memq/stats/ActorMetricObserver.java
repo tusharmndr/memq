@@ -16,33 +16,37 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ActorMetricObserver extends ActorObserver {
 
-    private final MetricRegistry metricRegistry;
-    private final String actorName;
     private static final String ACTOR_PREFIX = "actor";
     private static final String DELIMITER = ".";
     private static final String DELIMITER_REPLACEMENT = "_";
-
+    private final MetricRegistry metricRegistry;
+    private final String actorName;
     @Getter
     private final Map<MetricKeyData, MetricData> metricCache = new ConcurrentHashMap<>();
 
-    public ActorMetricObserver(final String actorName,
-                               final MetricRegistry metricRegistry) {
+    public ActorMetricObserver(
+            final String actorName,
+            final MetricRegistry metricRegistry) {
         super(null);
         this.metricRegistry = metricRegistry;
         this.actorName = actorName;
 
     }
 
+    private static String normalizeString(final String name) {
+        return name.replace(DELIMITER, DELIMITER_REPLACEMENT);
+    }
+
     @Override
     public void initialize(Actor actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
-                (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
-                        new CachedGauge<>(1, TimeUnit.SECONDS) {
-                            @Override
-                            protected Long loadValue() {
-                                return actor.size();
-                            }
-                        });
+                                  (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
+                                          new CachedGauge<>(1, TimeUnit.SECONDS) {
+                                              @Override
+                                              protected Long loadValue() {
+                                                  return actor.size();
+                                              }
+                                          });
     }
 
     @Override
@@ -57,10 +61,12 @@ public class ActorMetricObserver extends ActorObserver {
         try {
             proceed(context, runnable);
             metricData.getSuccess().mark();
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             metricData.getFailed().mark();
             throw t;
-        } finally {
+        }
+        finally {
             timer.stop();
         }
     }
@@ -77,7 +83,7 @@ public class ActorMetricObserver extends ActorObserver {
     private MetricData getMetricData(final String metricPrefix) {
         return MetricData.builder()
                 .timer(metricRegistry.timer(MetricRegistry.name(metricPrefix, "latency"),
-                        () -> new Timer(new SlidingTimeWindowArrayReservoir(60, TimeUnit.SECONDS))))
+                                            () -> new Timer(new SlidingTimeWindowArrayReservoir(60, TimeUnit.SECONDS))))
                 .success(metricRegistry.meter(MetricRegistry.name(metricPrefix, "success")))
                 .failed(metricRegistry.meter(MetricRegistry.name(metricPrefix, "failed")))
                 .total(metricRegistry.meter(MetricRegistry.name(metricPrefix, "total")))
@@ -94,9 +100,5 @@ public class ActorMetricObserver extends ActorObserver {
             metricPrefix.append(DELIMITER).append(normalizeString(metricName));
         }
         return metricPrefix.toString();
-    }
-
-    private static String normalizeString(final String name) {
-        return name.replace(DELIMITER, DELIMITER_REPLACEMENT);
     }
 }

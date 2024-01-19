@@ -34,9 +34,11 @@ public abstract class MemqActorBundle<T extends Configuration> implements Config
     public void run(T t, Environment environment) {
         this.memqConfig = config(t);
         Objects.requireNonNull(memqConfig, "Null memq config provided");
-        this.executorServiceProvider  = executorServiceProvider(t);
+        this.executorServiceProvider = executorServiceProvider(t);
         Objects.requireNonNull(this.executorServiceProvider, "Null executor service provider provided");
-        this.memqActorSystem = new MemqActorSystem(this.memqConfig, this.executorServiceProvider, environment.metrics());
+        this.memqActorSystem = new MemqActorSystem(this.memqConfig,
+                                                   this.executorServiceProvider,
+                                                   environment.metrics());
         environment.lifecycle().manage(memqActorSystem);
     }
 

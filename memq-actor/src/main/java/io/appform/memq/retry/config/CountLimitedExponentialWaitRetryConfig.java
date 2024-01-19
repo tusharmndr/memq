@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
@@ -7,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.Min;
@@ -37,16 +36,14 @@ public class CountLimitedExponentialWaitRetryConfig extends RetryConfig {
     @Builder.Default
     double multipier = 2.0D;
 
-    public CountLimitedExponentialWaitRetryConfig() {
-        super(RetryType.COUNT_LIMITED_EXPONENTIAL_BACKOFF);
-    }
-
     @Builder
-    public CountLimitedExponentialWaitRetryConfig(int maxAttempts,
-                                                  int delayInMillis,
-                                                  int maxTimeInMillisBetweenRetries,
-                                                  double multipier,
-                                                  Set<String> retriableExceptions) {
+    @Jacksonized
+    public CountLimitedExponentialWaitRetryConfig(
+            int maxAttempts,
+            int delayInMillis,
+            int maxTimeInMillisBetweenRetries,
+            double multipier,
+            Set<String> retriableExceptions) {
         super(RetryType.COUNT_LIMITED_EXPONENTIAL_BACKOFF, retriableExceptions);
         this.maxAttempts = maxAttempts;
         this.delayInMillis = delayInMillis;

@@ -14,16 +14,18 @@ public abstract class ActorObserver {
 
     public abstract void initialize(Actor actor);
 
-    public abstract void execute(final ActorObserverContext context,
-                                         final Runnable supplier);
+    public abstract void execute(
+            final ActorObserverContext context,
+            final Runnable supplier);
 
     public final ActorObserver setNext(final ActorObserver next) {
         this.next = next;
         return this;
     }
 
-    protected final void proceed(final ActorObserverContext context,
-                                         final Runnable runnable) {
+    protected final void proceed(
+            final ActorObserverContext context,
+            final Runnable runnable) {
         if (null == next) {
             runnable.run();
             return;

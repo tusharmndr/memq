@@ -4,6 +4,5 @@ public enum ActorOperation {
     PUBLISH,
     CONSUME,
     SIDELINE,
-    HANDLE_EXCEPTION
-    ;
+    HANDLE_EXCEPTION;
 }

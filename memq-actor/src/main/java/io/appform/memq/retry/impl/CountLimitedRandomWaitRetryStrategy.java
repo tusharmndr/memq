@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.impl;
 
 
@@ -13,11 +11,11 @@ import java.time.temporal.ChronoUnit;
 public class CountLimitedRandomWaitRetryStrategy extends RetryStrategy {
     public CountLimitedRandomWaitRetryStrategy(CountLimitedRandomWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
-                .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                .withMaxAttempts(config.getMaxAttempts())
-                .withDelay(config.getMinDelayInMillis(),
-                        config.getMaxDelayInMillis(),
-                        ChronoUnit.MILLIS)
-        );
+                      .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
+                      .withMaxAttempts(config.getMaxAttempts())
+                      .withDelay(config.getMinDelayInMillis(),
+                                 config.getMaxDelayInMillis(),
+                                 ChronoUnit.MILLIS)
+             );
     }
 }

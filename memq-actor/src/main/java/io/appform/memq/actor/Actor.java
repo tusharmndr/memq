@@ -30,24 +30,25 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final ExecutorService messageDispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
     private final Map<Integer, UnboundedMailbox<M>> mailboxes;
-    private final Function<M,Boolean> validationHandler;
-    private final Function<M,Boolean> consumerHandler;
+    private final Function<M, Boolean> validationHandler;
+    private final Function<M, Boolean> consumerHandler;
     private final Consumer<M> sidelineHandler;
-    private final BiConsumer<M,Throwable> exceptionHandler;
+    private final BiConsumer<M, Throwable> exceptionHandler;
     private final RetryStrategy retryer;
     private ActorObserver rootObserver;
 
 
-    public Actor(String name,
-                 ExecutorService executorService,
-                 Function<M, Boolean> validationHandler,
-                 Function<M, Boolean> consumerHandler,
-                 Consumer<M> sidelineHandler,
-                 BiConsumer<M, Throwable> exceptionHandler,
-                 RetryStrategy retryer,
-                 int partitions,
-                 ToIntFunction<M> partitioner,
-                 List<ActorObserver> observers) {
+    public Actor(
+            String name,
+            ExecutorService executorService,
+            Function<M, Boolean> validationHandler,
+            Function<M, Boolean> consumerHandler,
+            Consumer<M> sidelineHandler,
+            BiConsumer<M, Throwable> exceptionHandler,
+            RetryStrategy retryer,
+            int partitions,
+            ToIntFunction<M> partitioner,
+            List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
         Objects.requireNonNull(executorService, "Executor service cannot be null");
         Objects.requireNonNull(partitioner, "Partitioner cannot be null");
@@ -85,10 +86,10 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     public final void publish(final M message) {
         rootObserver.execute(ActorObserverContext.builder()
-                        .operation(ActorOperation.PUBLISH)
-                        .build(),
-                () -> mailboxes.get(partitioner.applyAsInt(message))
-                        .publish(message));
+                                     .operation(ActorOperation.PUBLISH)
+                                     .build(),
+                             () -> mailboxes.get(partitioner.applyAsInt(message))
+                                     .publish(message));
     }
 
     public final void start() {
@@ -105,7 +106,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         //Terminal observer calls the actual method
         ActorObserver startObserver = new TerminalActorObserver();
         startObserver.initialize(this); //initializing terminal observer
-        if(observers != null) {
+        if (observers != null) {
             for (var observer : observers) {
                 if (null == observer) {
                     continue;
@@ -137,7 +138,8 @@ public class Actor<M extends Message> implements AutoCloseable {
             lock.lock();
             try {
                 return messages.isEmpty();
-            } finally {
+            }
+            finally {
                 lock.unlock();
             }
         }
@@ -156,7 +158,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                 val messageId = message.id();
                 messages.putIfAbsent(messageId, message);
                 checkCondition.signalAll();
-            } finally {
+            }
+            finally {
                 lock.unlock();
             }
         }
@@ -168,7 +171,8 @@ public class Actor<M extends Message> implements AutoCloseable {
             try {
                 stopped.set(true);
                 checkCondition.signalAll();
-            } finally {
+            }
+            finally {
                 lock.unlock();
             }
             if (null != monitorFuture) {
@@ -195,18 +199,21 @@ public class Actor<M extends Message> implements AutoCloseable {
                     newMessages.forEach(m -> actor.executorService.submit(() -> {
                         try {
                             actor.rootObserver.execute(ActorObserverContext.builder()
-                                            .operation(ActorOperation.CONSUME)
-                                            .build(),
-                                    () -> this.process(messages.get(m)));
-                        } catch (Throwable throwable) {
+                                                               .operation(ActorOperation.CONSUME)
+                                                               .build(),
+                                                       () -> this.process(messages.get(m)));
+                        }
+                        catch (Throwable throwable) {
                             log.error("Error", throwable);
                         }
                     }));
                 }
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.warn("Monitor thread interrupted for {}", name);
-            } finally {
+            }
+            finally {
                 lock.unlock();
             }
         }
@@ -217,22 +224,25 @@ public class Actor<M extends Message> implements AutoCloseable {
                 boolean valid = actor.validationHandler.apply(message);
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
-                } else {
+                }
+                else {
                     val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
-                                        .operation(ActorOperation.SIDELINE)
-                                        .build(),
-                                () -> actor.sidelineHandler.accept(message));
+                                                           .operation(ActorOperation.SIDELINE)
+                                                           .build(),
+                                                   () -> actor.sidelineHandler.accept(message));
                     }
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 actor.rootObserver.execute(ActorObserverContext.builder()
-                                .operation(ActorOperation.HANDLE_EXCEPTION)
-                                .build(),
-                        () -> actor.exceptionHandler.accept(message, e));
-            } finally {
+                                                   .operation(ActorOperation.HANDLE_EXCEPTION)
+                                                   .build(),
+                                           () -> actor.exceptionHandler.accept(message, e));
+            }
+            finally {
                 releaseMessage(id);
             }
             return null;
@@ -244,7 +254,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                 inFlight.remove(id);
                 messages.remove(id);
                 checkCondition.signalAll(); //Redeliver
-            } finally {
+            }
+            finally {
                 lock.unlock();
             }
         }

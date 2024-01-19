@@ -31,7 +31,7 @@ public interface ActorSystem extends AutoCloseable {
     MetricRegistry metricRegistry();
 
     default List<ActorObserver> observers(String name, ActorConfig config) {
-        if(config.isMetricDisabled()) {
+        if (config.isMetricDisabled()) {
             return new ArrayList<>();
         }
         return List.of(new ActorMetricObserver(name, metricRegistry()));
@@ -41,8 +41,9 @@ public interface ActorSystem extends AutoCloseable {
         return message -> message.validTill() > System.currentTimeMillis();
     }
 
-    default <M extends Message>  BiConsumer<M, Throwable> createExceptionHandler(ActorConfig actorConfig,
-                                                             Consumer<M> sidelineHandler) {
+    default <M extends Message> BiConsumer<M, Throwable> createExceptionHandler(
+            ActorConfig actorConfig,
+            Consumer<M> sidelineHandler) {
         val exceptionHandlerConfig = actorConfig.getExceptionHandlerConfig();
         return exceptionHandlerConfig.accept(new ExceptionHandlerConfigVisitor<>() {
             @Override
@@ -58,11 +59,13 @@ public interface ActorSystem extends AutoCloseable {
         });
     }
 
-    default <M extends Message> ToIntFunction<M> partitioner(ActorConfig actorConfig,
-                                                             ToIntFunction<M> partitioner) {
+    default <M extends Message> ToIntFunction<M> partitioner(
+            ActorConfig actorConfig,
+            ToIntFunction<M> partitioner) {
         return partitioner != null ? partitioner
-                : actorConfig.getPartitions() == Constants.SINGLE_PARTITION ? message -> Constants.DEFAULT_PARTITION_INDEX
-                : message -> Math.absExact(message.id().hashCode()) % actorConfig.getPartitions();
+                                   : actorConfig.getPartitions() == Constants.SINGLE_PARTITION
+                                     ? message -> Constants.DEFAULT_PARTITION_INDEX
+                                     : message -> Math.absExact(message.id().hashCode()) % actorConfig.getPartitions();
     }
 
 }

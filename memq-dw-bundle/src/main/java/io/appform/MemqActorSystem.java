@@ -36,9 +36,10 @@ public class MemqActorSystem implements ActorSystem, Managed {
         this(memqConfig, (name, parallel) -> Executors.newFixedThreadPool(parallel), new MetricRegistry());
     }
 
-    public MemqActorSystem(MemqConfig memqConfig,
-                           ExecutorServiceProvider executorServiceProvider,
-                           MetricRegistry metricRegistry) {
+    public MemqActorSystem(
+            MemqConfig memqConfig,
+            ExecutorServiceProvider executorServiceProvider,
+            MetricRegistry metricRegistry) {
         this.executorServiceProvider = executorServiceProvider;
         this.executorConfigMap = memqConfig.getExecutors().stream()
                 .collect(Collectors.toMap(ExecutorConfig::getName, Function.identity()));
@@ -85,7 +86,8 @@ public class MemqActorSystem implements ActorSystem, Managed {
 
     @Override
     public void start() {
-        log.info("Started Memq Actor System"); //Note: None of the actors are register for now, actors will be started during registration
+        log.info("Started Memq Actor System"); //Note: None of the actors are register for now, actors will be
+        // started during registration
     }
 
     @Override

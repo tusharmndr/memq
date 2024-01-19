@@ -1,5 +1,3 @@
-
-
 package io.appform.memq.retry.impl;
 
 import io.appform.memq.retry.RetryStrategy;
@@ -13,6 +11,6 @@ public class NoRetryStrategy extends RetryStrategy {
     @SuppressWarnings("unused")
     public NoRetryStrategy(NoRetryConfig config) {
         super(new RetryPolicy<Boolean>()
-                .withMaxAttempts(1));
+                      .withMaxAttempts(1));
     }
 }
