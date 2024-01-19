@@ -23,9 +23,9 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         this(type, actorConfig, actorSystem, null);
     }
 
-    protected abstract boolean handleMessage(final M message);
+    protected abstract boolean handle(final M message);
 
-    protected void handleSideline(final M message) {
+    protected void sideline(final M message) {
         log.warn("skipping sideline for actor:{} message:{}", type.name(), message);
     }
 
@@ -38,9 +38,9 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         this.actor = new Actor<M>(type.name(),
                 actorSystem.createOrGetExecutorService(actorConfig),
                 actorSystem.expiryValidator(actorConfig),
-                this::handleMessage,
-                this::handleSideline,
-                actorSystem.createExceptionHandler(actorConfig, this::handleSideline),
+                this::handle,
+                this::sideline,
+                actorSystem.createExceptionHandler(actorConfig, this::sideline),
                 actorSystem.createRetryer(actorConfig),
                 actorConfig.getPartitions(),
                 actorSystem.partitioner(actorConfig, partitioner),
