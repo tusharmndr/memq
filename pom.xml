@@ -4,9 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.appform</groupId>
+    <groupId>io.appform.memq</groupId>
     <artifactId>memq</artifactId>
+    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>memq-actor</module>
+        <module>memq-dw-bundle</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -14,8 +19,7 @@
         <lombok.version>1.18.24</lombok.version>
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <junit.version>5.8.2</junit.version>
-        <signals.version>1.4</signals.version>
-        <function-metrics.version>1.0.13</function-metrics.version>
+        <jakarta.validation.version>2.0.2</jakarta.validation.version>
         <awaitility.version>4.2.0</awaitility.version>
         <guice.version>5.1.0</guice.version>
         <dw-guicey.version>5.5.0</dw-guicey.version>
@@ -57,6 +61,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>${jakarta.validation.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -104,6 +113,16 @@
             <artifactId>logback-classic</artifactId>
             <version>1.2.11</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.10.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics-core.version}</version>
         </dependency>
     </dependencies>
 
