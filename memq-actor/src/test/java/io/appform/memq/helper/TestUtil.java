@@ -24,7 +24,7 @@ public class TestUtil {
     }
 
     public static final String GLOBAL_EXECUTOR_SERVICE_GROUP = "global";
-    public static final int DEFAULT_THREADPOOL_SIZE = 10;
+    public static final int DEFAULT_THREADPOOL_SIZE = 2;
 
     public static ActorSystem actorSystem(ExecutorService tp) {
         val metricRegistry = new MetricRegistry();
@@ -59,7 +59,7 @@ public class TestUtil {
             }
         };
     }
-    public static HighLevelActor allExceptionActor(final AtomicInteger counter,
+    public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
                                                    final AtomicBoolean sideline,
                                                    final ExecutorService tc,
                                                    final HighLevelActorConfig highLevelActorConfig) {
@@ -67,11 +67,11 @@ public class TestUtil {
         return allExceptionActor(counter, sideline, highLevelActorConfig, TestUtil.actorSystem(tc));
     }
 
-    public static HighLevelActor allExceptionActor(final AtomicInteger counter,
+    public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
                                      final AtomicBoolean sideline,
                                      final HighLevelActorConfig highLevelActorConfig,
                                      final ActorSystem actorSystem) {
-        return new HighLevelActor<HighLevelActorType, TestIntMessage>(HighLevelActorType.EXCEPTION_ACTOR,
+        return new HighLevelActor<>(HighLevelActorType.EXCEPTION_ACTOR,
                 highLevelActorConfig,
                 actorSystem,
                 null

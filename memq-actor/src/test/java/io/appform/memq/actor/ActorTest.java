@@ -1,7 +1,6 @@
 package io.appform.memq.actor;
 
 import com.google.common.base.Stopwatch;
-import io.appform.memq.helper.TestUtil;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.impl.NoRetryStrategy;
@@ -26,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Slf4j
 class ActorTest {
 
+    static final int THREADPOOL_SIZE = 10;
+
     @Test
     @SneakyThrows
     void testSuccessSinglePartition() {
@@ -42,8 +43,8 @@ class ActorTest {
     @SneakyThrows
     void testSuccess(int partition) {
         val sum = new AtomicInteger(0);
-        val tp = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
+        val tp = Executors.newFixedThreadPool(THREADPOOL_SIZE);
+        val tc = Executors.newFixedThreadPool(THREADPOOL_SIZE);
         try (val a = adder(sum, partition, tc)) {
             a.start();
             val s = Stopwatch.createStarted();
@@ -64,15 +65,17 @@ class ActorTest {
     }
 
     static Actor<TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tc) {
-        return new Actor<TestIntMessage>("Adder",
+        return new Actor<>("Adder",
                 tc,
                 message -> true,
                 message -> {
-                        sum.addAndGet(message.getValue());
-                        return true;
-                        },
-                message -> {},
-                (message, throwable) -> {},
+                    sum.addAndGet(message.getValue());
+                    return true;
+                },
+                message -> {
+                },
+                (message, throwable) -> {
+                },
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,
                 message -> Math.absExact(message.id().hashCode()) % partition,

@@ -24,6 +24,8 @@ class HighLevelActorTest {
         ADDER,
     }
 
+    static final int THREAD_POOL_SIZE = 10;
+
     @Test
     @SneakyThrows
     void testSuccessSinglePartition() {
@@ -39,8 +41,8 @@ class HighLevelActorTest {
     @SneakyThrows
     void testSuccess(int partition) {
         val sum = new AtomicInteger(0);
-        val tp = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
+        val tp = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+        val tc = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         try {
             val a = adder(sum, partition, tc);
             val s = Stopwatch.createStarted();
@@ -60,8 +62,8 @@ class HighLevelActorTest {
 
     }
 
-    HighLevelActor adder(final AtomicInteger sum, int partition, ExecutorService tp) throws Exception {
-        return new HighLevelActor<HighLevelActorType, TestIntMessage>(HighLevelActorType.ADDER,
+    HighLevelActor<HighLevelActorType, TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tp) {
+        return new HighLevelActor<>(HighLevelActorType.ADDER,
                 TestUtil.noRetryActorConfig(partition),
                 TestUtil.actorSystem(tp),
                 message -> Math.absExact(message.id().hashCode()) % partition
