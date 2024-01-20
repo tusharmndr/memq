@@ -10,7 +10,6 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -43,8 +42,8 @@ class HighLevelActorTest {
         val sum = new AtomicInteger(0);
         val tp = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         val tc = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-        try {
-            val a = adder(sum, partition, tc);
+        try (val actorSystem = TestUtil.actorSystem(tc)) {
+            val a = adder(sum, partition, actorSystem);
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
                     .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> a.publish(new TestIntMessage(1)))));
@@ -57,15 +56,14 @@ class HighLevelActorTest {
             assertEquals(10_000, sum.get());
         } finally {
             tp.shutdownNow();
-            tc.shutdownNow();
         }
 
     }
 
-    HighLevelActor<HighLevelActorType, TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tp) {
+    HighLevelActor<HighLevelActorType, TestIntMessage> adder(final AtomicInteger sum, int partition, ActorSystem actorSystem) {
         return new HighLevelActor<>(HighLevelActorType.ADDER,
                 TestUtil.noRetryActorConfig(partition),
-                TestUtil.actorSystem(tp),
+                actorSystem,
                 message -> Math.absExact(message.id().hashCode()) % partition
         ) {
             @Override

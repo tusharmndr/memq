@@ -8,6 +8,8 @@ import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
+import org.apache.commons.lang3.builder.ToStringExclude;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +38,7 @@ class MemqActorSystemTest {
         }
     }
 
+    @Test
     void newActorRegisterAndCloseTest() {
         assertDoesNotThrow(() -> {
             val metricRegistry = new MetricRegistry();
@@ -53,7 +56,7 @@ class MemqActorSystemTest {
                     .retryConfig(new NoRetryConfig())
                     .executorName(GLOBAL_THREADPOOL_NAME)
                     .build();
-            val highLevelActor = new HighLevelActor(ActorType.TEST_HIGH_LEVEL_ACTOR, highLevelActorConfig, memqActorSystem) {
+            val highLevelActor = new HighLevelActor<>(ActorType.TEST_HIGH_LEVEL_ACTOR, highLevelActorConfig, memqActorSystem) {
                 @Override
                 protected boolean handle(Message message) {
                     return true;

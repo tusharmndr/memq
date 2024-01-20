@@ -7,6 +7,7 @@ import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.retry.config.*;
 import io.appform.memq.helper.TestUtil;
+import lombok.SneakyThrows;
 import lombok.val;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -92,26 +93,26 @@ class RetryActorTest {
         assertTrue(elapsedTime > MAX_RETRY_TIME);
     }
 
+    @SneakyThrows
     AtomicInteger triggerMessageToExceptionActor(RetryConfig retryConfig) {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        try {
+        try (val actorSystem = TestUtil.actorSystem(tc)) {
             val highLevelActorConfig = HighLevelActorConfig.builder()
                     .partitions(Constants.SINGLE_PARTITION)
                     .executorName(TestUtil.GLOBAL_EXECUTOR_SERVICE_GROUP)
                     .retryConfig(retryConfig)
                     .exceptionHandlerConfig(new SidelineConfig())
                     .build();
-            val actor = TestUtil.allExceptionActor(counter, sideline, tc, highLevelActorConfig);
+            val actor = TestUtil.allExceptionActor(counter, sideline,
+                    highLevelActorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
                     .until(sideline::get);
             return counter;
-        } finally {
-            tc.shutdownNow();
         }
     }
 

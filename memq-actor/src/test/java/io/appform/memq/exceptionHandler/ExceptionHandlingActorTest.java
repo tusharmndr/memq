@@ -6,6 +6,7 @@ import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.helper.TestUtil;
+import lombok.SneakyThrows;
 import lombok.val;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -31,22 +32,22 @@ class ExceptionHandlingActorTest {
         assertFalse(sideline.get());
     }
 
+    @SneakyThrows
     AtomicBoolean triggerMessageToExceptionActor(ExceptionHandlerConfig exceptionHandlerConfig) {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        try {
+        try (val actorSystem = TestUtil.actorSystem(tc)) {
             val highLevelActorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION);
             highLevelActorConfig.setExceptionHandlerConfig(exceptionHandlerConfig);
-            val actor = TestUtil.allExceptionActor(counter, sideline, tc, highLevelActorConfig);
+            val actor = TestUtil.allExceptionActor(counter, sideline,
+                    highLevelActorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
                     .until(() -> counter.get() == 1);
             return sideline;
-        } finally {
-            tc.shutdownNow();
         }
     }
 }

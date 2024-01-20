@@ -59,13 +59,6 @@ public class TestUtil {
             }
         };
     }
-    public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
-                                                   final AtomicBoolean sideline,
-                                                   final ExecutorService tc,
-                                                   final HighLevelActorConfig highLevelActorConfig) {
-
-        return allExceptionActor(counter, sideline, highLevelActorConfig, TestUtil.actorSystem(tc));
-    }
 
     public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
                                      final AtomicBoolean sideline,
