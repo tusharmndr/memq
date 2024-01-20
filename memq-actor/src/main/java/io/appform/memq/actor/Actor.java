@@ -185,6 +185,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             if (null != monitorFuture) {
                 monitorFuture.cancel(true);
             }
+            actor.messageDispatcher.shutdown();
         }
 
         private void monitor() {
