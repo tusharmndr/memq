@@ -7,8 +7,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.jackson.Jacksonized;
 
-import javax.validation.constraints.Min;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.time.Duration;
 import java.util.Set;
 
 @Data
@@ -16,26 +17,31 @@ import java.util.Set;
 @ToString(callSuper = true)
 public class TimeLimitedRandomWaitRetryConfig extends RetryConfig {
 
-    @Min(1)
-    @Builder.Default
-    int minDelayInMillis = 1;
-    @Min(1)
-    @Builder.Default
-    int maxDelayInMillis = 1;
+    @Valid
     @NotNull
     @Builder.Default
-    private int maxTimeInMillis = 1000;
+    private Duration minWaiTime = Duration.ofMillis(10);
+
+    @Valid
+    @NotNull
+    @Builder.Default
+    private Duration maxWaitTime = Duration.ofMillis(1_000);
+
+    @Valid
+    @NotNull
+    @Builder.Default
+    private Duration maxTime = Duration.ofMillis(30_000);
 
     @Builder
     @Jacksonized
     public TimeLimitedRandomWaitRetryConfig(
-            int maxTimeInMillis,
-            int minDelayInMillis,
-            int maxDelayInMillis,
+            Duration maxTime,
+            Duration minWaiTime,
+            Duration maxWaitTime,
             Set<String> retriableExceptions) {
         super(RetryType.TIME_LIMITED_RANDOM_WAIT, retriableExceptions);
-        this.maxTimeInMillis = maxTimeInMillis;
-        this.minDelayInMillis = minDelayInMillis;
-        this.maxDelayInMillis = maxDelayInMillis;
+        this.maxTime = maxTime;
+        this.minWaiTime = minWaiTime;
+        this.maxWaitTime = maxWaitTime;
     }
 }

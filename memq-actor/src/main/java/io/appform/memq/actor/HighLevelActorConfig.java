@@ -12,25 +12,26 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
 @Data
-@EqualsAndHashCode
+@Builder
 @ToString
+@EqualsAndHashCode
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class ActorConfig {
+public class HighLevelActorConfig {
 
     @Min(1)
     @Max(100)
     @Builder.Default
     private int partitions = 1;
 
-    @NotNull
     @Valid
+    @NotNull
     @Builder.Default
     private RetryConfig retryConfig = new NoRetryConfig();
 
-    @NotNull
     @Valid
+    @NotNull
+    @Builder.Default
     private ExceptionHandlerConfig exceptionHandlerConfig = new SidelineConfig();
 
     @NotNull

@@ -7,8 +7,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.jackson.Jacksonized;
 
-import javax.validation.constraints.Min;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.time.Duration;
 import java.util.Set;
 
 @Data
@@ -16,21 +17,24 @@ import java.util.Set;
 @ToString(callSuper = true)
 public class TimeLimitedFixedWaitRetryConfig extends RetryConfig {
 
-    @Min(1)
-    @Builder.Default
-    int delayInMillis = 1;
+    @Valid
     @NotNull
     @Builder.Default
-    private int maxTimeInMillis = 1000;
+    private Duration waitTime = Duration.ofMillis(500);
+
+    @Valid
+    @NotNull
+    @Builder.Default
+    private Duration maxTime = Duration.ofMillis(30_000);
 
     @Builder
     @Jacksonized
     public TimeLimitedFixedWaitRetryConfig(
-            int maxTimeInMillis,
-            int delayInMillis,
+            Duration maxTime,
+            Duration waitTime,
             Set<String> retriableExceptions) {
         super(RetryType.TIME_LIMITED_FIXED_WAIT, retriableExceptions);
-        this.maxTimeInMillis = maxTimeInMillis;
-        this.delayInMillis = delayInMillis;
+        this.maxTime = maxTime;
+        this.waitTime = waitTime;
     }
 }

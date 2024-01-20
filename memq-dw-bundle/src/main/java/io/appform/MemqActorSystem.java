@@ -4,9 +4,8 @@ import com.codahale.metrics.MetricRegistry;
 import io.appform.config.ExecutorConfig;
 import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
-import io.appform.memq.Constants;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.ActorConfig;
+import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.dropwizard.lifecycle.Managed;
@@ -63,25 +62,20 @@ public class MemqActorSystem implements ActorSystem, Managed {
     }
 
     @Override
-    public final ExecutorService createOrGetExecutorService(ActorConfig config) {
+    public final ExecutorService createOrGetExecutorService(HighLevelActorConfig config) {
         val name = config.getExecutorName();
         val threadPoolSize = determineThreadPoolSize(name);
         return executors.computeIfAbsent(name, executor -> executorServiceProvider.threadPool(name, threadPoolSize));
     }
 
     @Override
-    public final RetryStrategy createRetryer(ActorConfig actorConfig) {
-        return retryStrategyFactory.create(actorConfig.getRetryConfig());
+    public final RetryStrategy createRetryer(HighLevelActorConfig highLevelActorConfig) {
+        return retryStrategyFactory.create(highLevelActorConfig.getRetryConfig());
     }
 
     @Override
     public MetricRegistry metricRegistry() {
         return metricRegistry;
-    }
-
-    private int determineThreadPoolSize(String name) {
-        return executorConfigMap.getOrDefault(name, new ExecutorConfig(name, Constants.DEFAULT_THREADPOOL))
-                .getThreadPoolSize();
     }
 
     @Override
@@ -94,5 +88,10 @@ public class MemqActorSystem implements ActorSystem, Managed {
     public void stop() {
         this.close();
         log.info("Closed Memq Actor System");
+    }
+
+    private int determineThreadPoolSize(String name) {
+        return executorConfigMap.getOrDefault(name, new ExecutorConfig(name, Constants.DEFAULT_THREADPOOL))
+                .getThreadPoolSize();
     }
 }

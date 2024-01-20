@@ -2,7 +2,7 @@ package io.appform.memq;
 
 import com.codahale.metrics.MetricRegistry;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.ActorConfig;
+import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
@@ -24,27 +24,27 @@ public interface ActorSystem extends AutoCloseable {
 
     void register(Actor<?> actor);
 
-    ExecutorService createOrGetExecutorService(ActorConfig config);
+    ExecutorService createOrGetExecutorService(HighLevelActorConfig config);
 
-    RetryStrategy createRetryer(ActorConfig actorConfig);
+    RetryStrategy createRetryer(HighLevelActorConfig highLevelActorConfig);
 
     MetricRegistry metricRegistry();
 
-    default List<ActorObserver> observers(String name, ActorConfig config) {
+    default List<ActorObserver> observers(String name, HighLevelActorConfig config) {
         if (config.isMetricDisabled()) {
             return new ArrayList<>();
         }
         return List.of(new ActorMetricObserver(name, metricRegistry()));
     }
 
-    default <M extends Message> Function<M, Boolean> expiryValidator(ActorConfig actorConfig) {
+    default <M extends Message> Function<M, Boolean> expiryValidator(HighLevelActorConfig highLevelActorConfig) {
         return message -> message.validTill() > System.currentTimeMillis();
     }
 
     default <M extends Message> BiConsumer<M, Throwable> createExceptionHandler(
-            ActorConfig actorConfig,
+            HighLevelActorConfig highLevelActorConfig,
             Consumer<M> sidelineHandler) {
-        val exceptionHandlerConfig = actorConfig.getExceptionHandlerConfig();
+        val exceptionHandlerConfig = highLevelActorConfig.getExceptionHandlerConfig();
         return exceptionHandlerConfig.accept(new ExceptionHandlerConfigVisitor<>() {
             @Override
             public BiConsumer<M, Throwable> visit(DropConfig config) {
@@ -60,12 +60,12 @@ public interface ActorSystem extends AutoCloseable {
     }
 
     default <M extends Message> ToIntFunction<M> partitioner(
-            ActorConfig actorConfig,
+            HighLevelActorConfig highLevelActorConfig,
             ToIntFunction<M> partitioner) {
         return partitioner != null ? partitioner
-                                   : actorConfig.getPartitions() == Constants.SINGLE_PARTITION
+                                   : highLevelActorConfig.getPartitions() == Constants.SINGLE_PARTITION
                                      ? message -> Constants.DEFAULT_PARTITION_INDEX
-                                     : message -> Math.absExact(message.id().hashCode()) % actorConfig.getPartitions();
+                                     : message -> Math.absExact(message.id().hashCode()) % highLevelActorConfig.getPartitions();
     }
 
 }

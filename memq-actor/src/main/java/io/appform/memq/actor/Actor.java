@@ -5,6 +5,7 @@ import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import io.appform.memq.observer.TerminalActorObserver;
 import io.appform.memq.retry.RetryStrategy;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
@@ -38,6 +39,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private ActorObserver rootObserver;
 
 
+    @SneakyThrows
     public Actor(
             String name,
             ExecutorService executorService,
@@ -145,7 +147,12 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         public final long size() {
-            return messages.size();
+            lock.lock();
+            try {
+                return messages.size();
+            } finally {
+                lock.unlock();
+            }
         }
 
         public final void start() {
