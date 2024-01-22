@@ -34,7 +34,7 @@ class MetricObserverActorTest {
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
-                    .until(() -> counter.get() == 1);
+                    .until(actor::isEmpty);
             val metrics = actorSystem.metricRegistry().getMetrics();
             assertEquals(13, metrics.size());
             assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
@@ -58,7 +58,7 @@ class MetricObserverActorTest {
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
-                    .until(() -> counter.get() == 1);
+                    .until(actor::isEmpty);
             val metrics = actorSystem.metricRegistry().getMetrics();
             assertEquals(0, metrics.size());
         }

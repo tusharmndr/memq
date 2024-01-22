@@ -46,7 +46,7 @@ class ExceptionHandlingActorTest {
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
-                    .until(() -> counter.get() == 1);
+                    .until(actor::isEmpty);
             return sideline;
         }
     }

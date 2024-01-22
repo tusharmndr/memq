@@ -111,7 +111,7 @@ class RetryActorTest {
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
-                    .until(sideline::get);
+                    .until(actor::isEmpty);
             return counter;
         }
     }

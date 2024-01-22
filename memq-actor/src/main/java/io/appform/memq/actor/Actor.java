@@ -139,7 +139,9 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final boolean isEmpty() {
             lock.lock();
             try {
-                return messages.isEmpty();
+                val empty= messages.isEmpty();
+                checkCondition.signalAll(); //TODO: Check if needed
+                return empty;
             }
             finally {
                 lock.unlock();
@@ -149,7 +151,9 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final long size() {
             lock.lock();
             try {
-                return messages.size();
+                val size = messages.size();
+                checkCondition.signalAll(); //TODO: Check if needed
+                return size;
             } finally {
                 lock.unlock();
             }
