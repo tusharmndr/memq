@@ -13,8 +13,8 @@ public class CountLimitedRandomWaitRetryStrategy extends RetryStrategy {
         super(new RetryPolicy<Boolean>()
                       .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
                       .withMaxAttempts(config.getMaxAttempts())
-                      .withDelay(config.getMinWaitTime().toMillis(),
-                                 config.getMaxWaitTime().toMillis(),
+                      .withDelay(config.getMinWaitTimeInMillis(),
+                                 config.getMaxWaitTimeInMillis(),
                                  ChronoUnit.MILLIS)
              );
     }

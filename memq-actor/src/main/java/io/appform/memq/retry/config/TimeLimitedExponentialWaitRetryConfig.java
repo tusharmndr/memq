@@ -4,10 +4,8 @@ import io.appform.memq.retry.RetryType;
 import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 
-import javax.validation.Valid;
 import javax.validation.constraints.DecimalMin;
-import javax.validation.constraints.NotNull;
-import java.time.Duration;
+import javax.validation.constraints.Min;
 import java.util.Set;
 
 @Data
@@ -15,36 +13,34 @@ import java.util.Set;
 @ToString(callSuper = true)
 public class TimeLimitedExponentialWaitRetryConfig extends RetryConfig {
 
-    @Valid
-    @NotNull
+    @Min(1)
     @Builder.Default
-    private Duration waitTime = Duration.ofMillis(10);
+    private int waitTimeInMillis = 10;
 
-    @Valid
-    @NotNull
+    @Min(2)
     @Builder.Default
-    private Duration maxWaitTime =  Duration.ofMillis(1_000);
+    private int maxWaitTimeInMillis = 1_000;
 
     @DecimalMin("1.1")
     @Builder.Default
     private double multipier = 2.0D;
 
-    @Valid
+    @Min(3)
     @Builder.Default
-    private Duration maxTime = Duration.ofMillis(30_000);
+    private int maxTimeInMillis = 10_000;
 
     @Builder
     @Jacksonized
     public TimeLimitedExponentialWaitRetryConfig(
-            Duration maxTime,
-            Duration waitTime,
-            Duration maxWaitTime,
+            int maxTimeInMillis,
+            int waitTimeInMillis,
+            int maxWaitTimeInMillis,
             double multipier,
             Set<String> retriableExceptions) {
         super(RetryType.TIME_LIMITED_EXPONENTIAL_BACKOFF, retriableExceptions);
-        this.maxTime = maxTime;
-        this.waitTime = waitTime;
-        this.maxWaitTime = maxWaitTime;
+        this.maxTimeInMillis = maxTimeInMillis;
+        this.waitTimeInMillis = waitTimeInMillis;
+        this.maxWaitTimeInMillis = maxWaitTimeInMillis;
         this.multipier = multipier;
     }
 }

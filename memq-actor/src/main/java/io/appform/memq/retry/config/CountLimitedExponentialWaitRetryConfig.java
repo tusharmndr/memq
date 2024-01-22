@@ -7,11 +7,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.jackson.Jacksonized;
 
-import javax.validation.Valid;
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import java.time.Duration;
 import java.util.Set;
 
 @Data
@@ -23,15 +20,13 @@ public class CountLimitedExponentialWaitRetryConfig extends RetryConfig {
     @Builder.Default
     private int maxAttempts = 1;
 
-    @Valid
-    @NotNull
+    @Min(1)
     @Builder.Default
-    private Duration waitTime = Duration.ofMillis(10);
+    private int waitTimeInMillis = 10;
 
-    @Valid
-    @NotNull
+    @Min(2)
     @Builder.Default
-    private Duration maxWaitTime = Duration.ofMillis(1_000);
+    private int maxWaitTimeInMillis = 1_000;
 
     @DecimalMin("1.1")
     @Builder.Default
@@ -41,14 +36,14 @@ public class CountLimitedExponentialWaitRetryConfig extends RetryConfig {
     @Jacksonized
     public CountLimitedExponentialWaitRetryConfig(
             int maxAttempts,
-            Duration waitTime,
-            Duration maxWaitTime,
+            int waitTimeInMillis,
+            int maxWaitTimeInMillis,
             double multipier,
             Set<String> retriableExceptions) {
         super(RetryType.COUNT_LIMITED_EXPONENTIAL_BACKOFF, retriableExceptions);
         this.maxAttempts = maxAttempts;
-        this.waitTime = waitTime;
-        this.maxWaitTime = maxWaitTime;
+        this.waitTimeInMillis = waitTimeInMillis;
+        this.maxWaitTimeInMillis = maxWaitTimeInMillis;
         this.multipier = multipier;
     }
 }

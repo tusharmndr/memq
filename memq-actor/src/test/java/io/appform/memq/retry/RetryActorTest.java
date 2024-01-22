@@ -30,8 +30,8 @@ class RetryActorTest {
 
         val counter = triggerMessageToExceptionActor(CountLimitedExponentialWaitRetryConfig.builder()
                 .maxAttempts(MAX_RETRY_COUNT)
-                .waitTime(Duration.ofMillis(100))
-                .maxWaitTime(Duration.ofMillis(500))
+                .waitTimeInMillis(100)
+                .maxWaitTimeInMillis(500)
                 .multipier(1.1)
                 .build());
         assertEquals(MAX_RETRY_COUNT, counter.get());
@@ -41,7 +41,7 @@ class RetryActorTest {
     void testCountLimitedFixedWaitRetryConfig() {
         val counter = triggerMessageToExceptionActor(CountLimitedFixedWaitRetryConfig.builder()
                 .maxAttempts(MAX_RETRY_COUNT)
-                .waitTime(Duration.ofMillis(100))
+                .waitTimeInMillis(100)
                 .build());
         assertEquals(MAX_RETRY_COUNT, counter.get());
 
@@ -51,8 +51,8 @@ class RetryActorTest {
     void testCountLimitedRandomWaitRetryConfig() {
         val counter = triggerMessageToExceptionActor(CountLimitedRandomWaitRetryConfig.builder()
                 .maxAttempts(MAX_RETRY_COUNT)
-                .minWaitTime(Duration.ofMillis(100))
-                .maxWaitTime(Duration.ofMillis(500))
+                .minWaitTimeInMillis(100)
+                .maxWaitTimeInMillis(500)
                 .build());
         assertEquals(MAX_RETRY_COUNT, counter.get());
     }
@@ -61,9 +61,9 @@ class RetryActorTest {
     void testTimeLimitedExponentialWaitRetryConfig() {
         val s = Stopwatch.createStarted();
         triggerMessageToExceptionActor(TimeLimitedExponentialWaitRetryConfig.builder()
-                .maxTime(Duration.ofMillis(MAX_RETRY_TIME))
-                .waitTime(Duration.ofMillis(500))
-                .maxWaitTime(Duration.ofMillis(1_000))
+                .maxTimeInMillis(MAX_RETRY_TIME)
+                .waitTimeInMillis(500)
+                .maxWaitTimeInMillis(1_000)
                 .multipier(2.0)
                 .build());
         val elapsedTime = s.elapsed().toMillis();
@@ -74,8 +74,8 @@ class RetryActorTest {
     void testTimeLimitedFixedWaitRetryConfig() {
         val s = Stopwatch.createStarted();
         triggerMessageToExceptionActor(TimeLimitedFixedWaitRetryConfig.builder()
-                .maxTime(Duration.ofMillis(MAX_RETRY_TIME))
-                .waitTime(Duration.ofMillis(1_000))
+                .maxTimeInMillis(MAX_RETRY_TIME)
+                .waitTimeInMillis(1_000)
                 .build());
         val elapsedTime = s.elapsed().toMillis();
         assertTrue(elapsedTime > MAX_RETRY_TIME);
@@ -85,9 +85,9 @@ class RetryActorTest {
     void testTimeLimitedRandomWaitRetryConfig() {
         val s = Stopwatch.createStarted();
         triggerMessageToExceptionActor(TimeLimitedRandomWaitRetryConfig.builder()
-                .maxTime(Duration.ofMillis(MAX_RETRY_TIME))
-                .minWaiTime(Duration.ofMillis(500))
-                .maxWaitTime(Duration.ofMillis(1_000))
+                .maxTimeInMillis(MAX_RETRY_TIME)
+                .minWaiTimeInMillis(500)
+                .maxWaitTimeInMillis(1_000)
                 .build());
         val elapsedTime = s.elapsed().toMillis();
         assertTrue(elapsedTime > MAX_RETRY_TIME);

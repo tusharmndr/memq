@@ -1,7 +1,7 @@
 package io.appform.memq.actor;
 
+import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
-import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.config.RetryConfig;
 import lombok.*;
@@ -32,7 +32,7 @@ public class HighLevelActorConfig {
     @Valid
     @NotNull
     @Builder.Default
-    private ExceptionHandlerConfig exceptionHandlerConfig = new SidelineConfig();
+    private ExceptionHandlerConfig exceptionHandlerConfig = new DropConfig();
 
     @NotNull
     private String executorName;
