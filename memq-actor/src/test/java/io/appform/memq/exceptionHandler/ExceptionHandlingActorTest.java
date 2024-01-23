@@ -38,8 +38,7 @@ class ExceptionHandlingActorTest {
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
         try (val actorSystem = TestUtil.actorSystem(tc)) {
-            val highLevelActorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION);
-            highLevelActorConfig.setExceptionHandlerConfig(exceptionHandlerConfig);
+            val highLevelActorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, exceptionHandlerConfig);
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     highLevelActorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));

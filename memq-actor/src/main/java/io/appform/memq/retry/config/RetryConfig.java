@@ -10,6 +10,7 @@ import java.util.Set;
 /**
  * Configure a retry strategy
  */
+@Data
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
 @JsonSubTypes({
         @JsonSubTypes.Type(name = "COUNT_LIMITED_EXPONENTIAL_BACKOFF", value =
@@ -22,7 +23,6 @@ import java.util.Set;
         @JsonSubTypes.Type(name = "TIME_LIMITED_FIXED_WAIT", value = TimeLimitedFixedWaitRetryConfig.class),
         @JsonSubTypes.Type(name = "TIME_LIMITED_INCREMENTAL_WAIT", value = TimeLimitedRandomWaitRetryConfig.class)
 })
-@Data
 public abstract class RetryConfig {
     private final RetryType type;
 

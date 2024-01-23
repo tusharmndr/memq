@@ -1,13 +1,13 @@
 package io.appform.memq.exceptionhandler.config;
 
 import io.appform.memq.exceptionhandler.ExceptionHandlerType;
-import lombok.Data;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.extern.jackson.Jacksonized;
 
-@Data
+@Builder
+@Jacksonized
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
 public class SidelineConfig extends ExceptionHandlerConfig {
 
     public SidelineConfig() {

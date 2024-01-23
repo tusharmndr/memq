@@ -27,7 +27,7 @@ class MetricObserverActorTest {
             val metricPrefix = "actor." + TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name() + ".";
             val counter = new AtomicInteger();
             val sideline = new AtomicBoolean();
-            val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION);
+            val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false);
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     actorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));
@@ -50,8 +50,7 @@ class MetricObserverActorTest {
         try (val actorSystem = TestUtil.actorSystem(tc)) {
             val counter = new AtomicInteger();
             val sideline = new AtomicBoolean();
-            val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION);
-            actorConfig.setMetricDisabled(true);
+            val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, true);
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     actorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));
