@@ -1,27 +1,24 @@
 package io.appform.config;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
-@Data
+@Value
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Jacksonized
 public class ExecutorConfig {
 
     @NotNull
     @NotEmpty
-    private String name;
+    String name;
 
     @Min(1)
     @Max(300)
-    private int threadPoolSize;
+    int threadPoolSize;
 
 }

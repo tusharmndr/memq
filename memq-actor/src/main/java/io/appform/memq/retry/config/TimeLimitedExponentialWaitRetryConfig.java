@@ -8,26 +8,21 @@ import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.Min;
 import java.util.Set;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
 public class TimeLimitedExponentialWaitRetryConfig extends RetryConfig {
 
     @Min(1)
-    @Builder.Default
-    private int waitTimeInMillis = 10;
+    int waitTimeInMillis;
 
     @Min(2)
-    @Builder.Default
-    private int maxWaitTimeInMillis = 1_000;
+    int maxWaitTimeInMillis;
 
     @DecimalMin("1.1")
-    @Builder.Default
-    private double multipier = 2.0D;
+    double multipier;
 
     @Min(3)
-    @Builder.Default
-    private int maxTimeInMillis = 10_000;
+    int maxTimeInMillis;
 
     @Builder
     @Jacksonized

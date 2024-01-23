@@ -91,7 +91,10 @@ public class MemqActorSystem implements ActorSystem, Managed {
     }
 
     private int determineThreadPoolSize(String name) {
-        return executorConfigMap.getOrDefault(name, new ExecutorConfig(name, Constants.DEFAULT_THREADPOOL))
-                .getThreadPoolSize();
+        return executorConfigMap.getOrDefault(name, ExecutorConfig.builder()
+                                                        .name(name)
+                                                        .threadPoolSize(Constants.DEFAULT_THREADPOOL)
+                                                        .build()
+                                            ).getThreadPoolSize();
     }
 }

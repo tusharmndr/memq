@@ -1,27 +1,21 @@
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.constraints.Min;
 import java.util.Set;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
 public class TimeLimitedFixedWaitRetryConfig extends RetryConfig {
 
     @Min(1)
-    @Builder.Default
-    private int waitTimeInMillis = 500;
+    int waitTimeInMillis;
 
     @Min(2)
-    @Builder.Default
-    private int maxTimeInMillis = 10_000;
+    int maxTimeInMillis;
 
     @Builder
     @Jacksonized
