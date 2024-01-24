@@ -96,6 +96,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     public final void publish(final M message) {
         rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
+                                     .message(message)
                                      .build(),
                              () -> mailboxes.get(partitioner.applyAsInt(message))
                                      .publish(message));
@@ -225,6 +226,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     messagesToBeDelivered.forEach(message -> actor.executorService.submit(() -> {
                         try {
                             actor.rootObserver.execute(ActorObserverContext.builder()
+                                                               .message(messages.get(m))
                                                                .operation(ActorOperation.CONSUME)
                                                                .build(),
                                                        () -> process(message));
@@ -259,6 +261,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
+                                                           .message(message)
                                                            .operation(ActorOperation.SIDELINE)
                                                            .build(),
                                                    () -> actor.sidelineHandler.accept(message));
@@ -268,7 +271,8 @@ public class Actor<M extends Message> implements AutoCloseable {
             catch (Exception e) {
                 log.error("Error processing message : " + id, e);
                 actor.rootObserver.execute(ActorObserverContext.builder()
-                                                   .operation(ActorOperation.HANDLE_EXCEPTION)
+                                                          .message(message)
+                                                          .operation(ActorOperation.HANDLE_EXCEPTION)
                                                    .build(),
                                            () -> actor.exceptionHandler.accept(message, e));
             }
