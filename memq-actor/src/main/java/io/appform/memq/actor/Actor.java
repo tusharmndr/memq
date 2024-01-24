@@ -226,7 +226,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     messagesToBeDelivered.forEach(message -> actor.executorService.submit(() -> {
                         try {
                             actor.rootObserver.execute(ActorObserverContext.builder()
-                                                               .message(messages.get(m))
+                                                               .message(message)
                                                                .operation(ActorOperation.CONSUME)
                                                                .build(),
                                                        () -> process(message));
