@@ -1,42 +1,35 @@
 package io.appform.memq.retry.config;
 
 import io.appform.memq.retry.RetryType;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.constraints.Min;
 import java.util.Set;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
 public class CountLimitedRandomWaitRetryConfig extends RetryConfig {
 
     @Min(1)
-    @Builder.Default
-    int maxAttempts = 1;
+    int maxAttempts;
 
     @Min(1)
-    @Builder.Default
-    int minDelayInMillis = 1;
+    int minWaitTimeInMillis;
 
-    @Min(1)
-    @Builder.Default
-    int maxDelayInMillis = 1;
+    @Min(2)
+    int maxWaitTimeInMillis;
 
     @Builder
     @Jacksonized
     CountLimitedRandomWaitRetryConfig(
             int maxAttempts,
-            int minDelayInMillis,
-            int maxDelayInMillis,
+            int minWaitTimeInMillis,
+            int maxWaitTimeInMillis,
             Set<String> retriableExceptions) {
         super(RetryType.COUNT_LIMITED_RANDOM_WAIT, retriableExceptions);
         this.maxAttempts = maxAttempts;
-        this.minDelayInMillis = minDelayInMillis;
-        this.maxDelayInMillis = maxDelayInMillis;
+        this.minWaitTimeInMillis = minWaitTimeInMillis;
+        this.maxWaitTimeInMillis = maxWaitTimeInMillis;
     }
 }

@@ -5,6 +5,7 @@ import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import io.appform.memq.observer.TerminalActorObserver;
 import io.appform.memq.retry.RetryStrategy;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
@@ -38,6 +39,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private ActorObserver rootObserver;
 
 
+    @SneakyThrows
     public Actor(
             String name,
             ExecutorService executorService,
@@ -87,6 +89,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     public final void publish(final M message) {
         rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
+                                     .message(message)
                                      .build(),
                              () -> mailboxes.get(partitioner.applyAsInt(message))
                                      .publish(message));
@@ -137,7 +140,9 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final boolean isEmpty() {
             lock.lock();
             try {
-                return messages.isEmpty();
+                val empty= messages.isEmpty();
+                checkCondition.signalAll(); //TODO: Check if needed
+                return empty;
             }
             finally {
                 lock.unlock();
@@ -145,7 +150,14 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         public final long size() {
-            return messages.size();
+            lock.lock();
+            try {
+                val size = messages.size();
+                checkCondition.signalAll(); //TODO: Check if needed
+                return size;
+            } finally {
+                lock.unlock();
+            }
         }
 
         public final void start() {
@@ -178,6 +190,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             if (null != monitorFuture) {
                 monitorFuture.cancel(true);
             }
+            actor.messageDispatcher.shutdown();
         }
 
         private void monitor() {
@@ -199,6 +212,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     newMessages.forEach(m -> actor.executorService.submit(() -> {
                         try {
                             actor.rootObserver.execute(ActorObserverContext.builder()
+                                                               .message(messages.get(m))
                                                                .operation(ActorOperation.CONSUME)
                                                                .build(),
                                                        () -> this.process(messages.get(m)));
@@ -230,6 +244,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
+                                                           .message(message)
                                                            .operation(ActorOperation.SIDELINE)
                                                            .build(),
                                                    () -> actor.sidelineHandler.accept(message));
@@ -238,7 +253,8 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
             catch (Exception e) {
                 actor.rootObserver.execute(ActorObserverContext.builder()
-                                                   .operation(ActorOperation.HANDLE_EXCEPTION)
+                                                          .message(message)
+                                                          .operation(ActorOperation.HANDLE_EXCEPTION)
                                                    .build(),
                                            () -> actor.exceptionHandler.accept(message, e));
             }

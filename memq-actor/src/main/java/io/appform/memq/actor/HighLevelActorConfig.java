@@ -1,41 +1,44 @@
 package io.appform.memq.actor;
 
+import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
-import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.config.RetryConfig;
 import lombok.*;
+import lombok.extern.jackson.Jacksonized;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
-@Data
-@EqualsAndHashCode
-@ToString
+@Value
+@Builder
+@Jacksonized
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class ActorConfig {
+public class HighLevelActorConfig {
 
     @Min(1)
     @Max(100)
     @Builder.Default
-    private int partitions = 1;
+    int partitions = 1;
 
-    @NotNull
     @Valid
+    @NotNull
     @Builder.Default
-    private RetryConfig retryConfig = new NoRetryConfig();
+    RetryConfig retryConfig = new NoRetryConfig();
 
-    @NotNull
     @Valid
-    private ExceptionHandlerConfig exceptionHandlerConfig = new SidelineConfig();
+    @NotNull
+    @Builder.Default
+    ExceptionHandlerConfig exceptionHandlerConfig = new DropConfig();
 
     @NotNull
-    private String executorName;
+    @Builder.Default
+    String executorName = "default";
 
-    private boolean metricDisabled;
+    @Builder.Default
+    boolean metricDisabled = false;
 
 }

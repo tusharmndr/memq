@@ -6,14 +6,15 @@ import io.appform.memq.utils.CommonUtils;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+
 
 public class TimeLimitedFixedWaitRetryStrategy extends RetryStrategy {
     public TimeLimitedFixedWaitRetryStrategy(TimeLimitedFixedWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
                       .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                      .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
-                      .withDelay(Duration.of(config.getDelayInMillis(), ChronoUnit.MILLIS))
+                      .withMaxDuration(Duration.ofMillis(config.getMaxTimeInMillis()))
+                      .withDelay(Duration.ofMillis(config.getWaitTimeInMillis()))
+                      .withMaxRetries(-1)
              );
     }
 }

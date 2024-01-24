@@ -13,11 +13,12 @@ public class TimeLimitedExponentialWaitRetryStrategy extends RetryStrategy {
     public TimeLimitedExponentialWaitRetryStrategy(TimeLimitedExponentialWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
                       .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                      .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
-                      .withBackoff(config.getDelayInMillis(),
-                                   config.getMaxDelayInMillis(),
+                      .withMaxDuration(Duration.ofMillis(config.getMaxTimeInMillis()))
+                      .withBackoff(config.getWaitTimeInMillis(),
+                                   config.getMaxWaitTimeInMillis(),
                                    ChronoUnit.MILLIS,
                                    config.getMultipier())
-             );
+                      .withMaxRetries(-1)
+        );
     }
 }

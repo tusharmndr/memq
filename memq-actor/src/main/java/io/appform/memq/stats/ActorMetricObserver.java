@@ -41,7 +41,7 @@ public class ActorMetricObserver extends ActorObserver {
     public void initialize(Actor actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
                                   (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
-                                          new CachedGauge<>(1, TimeUnit.SECONDS) {
+                                          new CachedGauge<>(5, TimeUnit.SECONDS) {
                                               @Override
                                               protected Long loadValue() {
                                                   return actor.size();

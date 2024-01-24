@@ -12,8 +12,9 @@ public class TimeLimitedRandomWaitRetryStrategy extends RetryStrategy {
     public TimeLimitedRandomWaitRetryStrategy(TimeLimitedRandomWaitRetryConfig config) {
         super(new RetryPolicy<Boolean>()
                       .handleIf(exception -> CommonUtils.isRetriable(config.getRetriableExceptions(), exception))
-                      .withMaxDuration(Duration.of(config.getMaxTimeInMillis(), ChronoUnit.MILLIS))
-                      .withDelay(config.getMinDelayInMillis(), config.getMaxDelayInMillis(), ChronoUnit.MILLIS)
-             );
+                      .withMaxDuration(Duration.ofMillis(config.getMaxTimeInMillis()))
+                      .withDelay(config.getMinWaiTimeInMillis(), config.getMaxWaitTimeInMillis(), ChronoUnit.MILLIS)
+                      .withMaxRetries(-1)
+        );
     }
 }

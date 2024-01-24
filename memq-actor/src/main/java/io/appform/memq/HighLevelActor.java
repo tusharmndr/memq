@@ -2,9 +2,10 @@ package io.appform.memq;
 
 
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.ActorConfig;
+import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.ToIntFunction;
@@ -19,27 +20,27 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
     @SuppressWarnings("unused")
     protected HighLevelActor(
             MessageType type,
-            ActorConfig actorConfig,
+            HighLevelActorConfig highLevelActorConfig,
             ActorSystem actorSystem) {
-        this(type, actorConfig, actorSystem, null);
+        this(type, highLevelActorConfig, actorSystem, null);
     }
 
     protected HighLevelActor(
             MessageType type,
-            ActorConfig actorConfig,
+            HighLevelActorConfig highLevelActorConfig,
             ActorSystem actorSystem,
             ToIntFunction<M> partitioner) {
         this.type = type;
         this.actor = new Actor<>(type.name(),
-                                  actorSystem.createOrGetExecutorService(actorConfig),
-                                  actorSystem.expiryValidator(actorConfig),
+                                  actorSystem.createOrGetExecutorService(highLevelActorConfig),
+                                  actorSystem.expiryValidator(highLevelActorConfig),
                                   this::handle,
                                   this::sideline,
-                                  actorSystem.createExceptionHandler(actorConfig, this::sideline),
-                                  actorSystem.createRetryer(actorConfig),
-                                  actorConfig.getPartitions(),
-                                  actorSystem.partitioner(actorConfig, partitioner),
-                                  actorSystem.observers(type.name(), actorConfig));
+                                  actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
+                                  actorSystem.createRetryer(highLevelActorConfig),
+                                  highLevelActorConfig.getPartitions(),
+                                  actorSystem.partitioner(highLevelActorConfig, partitioner),
+                                  actorSystem.observers(type.name(), highLevelActorConfig));
         actorSystem.register(actor);
     }
 
@@ -52,6 +53,10 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
     public final boolean publish(final M message) {
         actor.publish(message);
         return true;
+    }
+
+    public final boolean isEmpty() {
+       return actor.isEmpty();
     }
 
 }
