@@ -56,6 +56,11 @@ public class TestUtil {
             }
 
             @Override
+            public boolean isRunning() {
+                return !registeredActors.isEmpty() && registeredActors.stream().allMatch(Actor::isRunning);
+            }
+
+            @Override
             public void close() {
                 registeredActors.forEach(Actor::close);
             }

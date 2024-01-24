@@ -30,6 +30,8 @@ public interface ActorSystem extends AutoCloseable {
 
     MetricRegistry metricRegistry();
 
+    boolean isRunning();
+
     default List<ActorObserver> observers(String name, HighLevelActorConfig config) {
         if (config.isMetricDisabled()) {
             return new ArrayList<>();

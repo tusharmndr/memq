@@ -79,6 +79,11 @@ public class MemqActorSystem implements ActorSystem, Managed {
     }
 
     @Override
+    public boolean isRunning() {
+        return !registeredActors.isEmpty() && registeredActors.stream().allMatch(Actor::isRunning);
+    }
+
+    @Override
     public void start() {
         log.info("Started Memq Actor System"); //Note: None of the actors are register for now, actors will be
         // started during registration
