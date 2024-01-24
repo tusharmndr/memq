@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
 import java.util.concurrent.Executors;
@@ -17,6 +18,7 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
+@ExtendWith(MemQTestExtension.class)
 class HighLevelActorTest {
 
     enum HighLevelActorType {
@@ -27,22 +29,21 @@ class HighLevelActorTest {
 
     @Test
     @SneakyThrows
-    void testSuccessSinglePartition() {
-        testSuccess(1);
+    void testSuccessSinglePartition(ActorSystem actorSystem) {
+        testSuccess(1, actorSystem);
     }
 
     @Test
     @SneakyThrows
-    void testSuccessMultiPartition() {
-        testSuccess(4);
+    void testSuccessMultiPartition(ActorSystem actorSystem) {
+        testSuccess(4, actorSystem);
     }
 
     @SneakyThrows
-    void testSuccess(int partition) {
+    void testSuccess(int partition, ActorSystem actorSystem) {
         val sum = new AtomicInteger(0);
         val tp = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-        val tc = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-        try (val actorSystem = TestUtil.actorSystem(tc)) {
+        try {
             val a = adder(sum, partition, actorSystem);
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
@@ -50,14 +51,13 @@ class HighLevelActorTest {
             Awaitility.await()
                     .timeout(Duration.ofMinutes(1))
                     .catchUncaughtExceptions()
-                    .until(a::isEmpty);
+                    .until(() -> sum.get() == 10_000);
             log.info("Test took {} ms",
                     s.elapsed().toMillis());
             assertEquals(10_000, sum.get());
         } finally {
             tp.shutdownNow();
         }
-
     }
 
     HighLevelActor<HighLevelActorType, TestIntMessage> adder(final AtomicInteger sum, int partition, ActorSystem actorSystem) {
@@ -69,6 +69,7 @@ class HighLevelActorTest {
             @Override
             protected boolean handle(TestIntMessage message) {
                 sum.addAndGet(message.getValue());
+//                System.out.println("Sum= " + sum.get());
                 return true;
             }
         };
