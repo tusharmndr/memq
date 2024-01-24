@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -86,9 +87,16 @@ public class Actor<M extends Message> implements AutoCloseable {
                 .count();
     }
 
+    public final boolean isRunning() {
+        return mailboxes.values()
+                .stream()
+                .allMatch(UnboundedMailbox::isRunning);
+    }
+
     public final void publish(final M message) {
         rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
+                                     .message(message)
                                      .build(),
                              () -> mailboxes.get(partitioner.applyAsInt(message))
                                      .publish(message));
@@ -139,9 +147,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final boolean isEmpty() {
             lock.lock();
             try {
-                val empty= messages.isEmpty();
-                checkCondition.signalAll(); //TODO: Check if needed
-                return empty;
+                return messages.isEmpty();
             }
             finally {
                 lock.unlock();
@@ -151,12 +157,14 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final long size() {
             lock.lock();
             try {
-                val size = messages.size();
-                checkCondition.signalAll(); //TODO: Check if needed
-                return size;
+                return messages.size();
             } finally {
                 lock.unlock();
             }
+        }
+
+        public final boolean isRunning() {
+            return !stopped.get();
         }
 
         public final void start() {
@@ -196,41 +204,52 @@ public class Actor<M extends Message> implements AutoCloseable {
             lock.lock();
             try {
                 while (true) {
-                    checkCondition.await();
+                    //We can do the tests twice or just stop
+                    //waiting after sometime and check the conditions anyway
+                    //The set difference operation _might_ be expensive, hence going for the latter approach for now
+                    //Can be changed in the future if needed
+                    checkCondition.await(100, TimeUnit.MILLISECONDS);
                     if (stopped.get()) {
                         log.info("Actor {} monitor thread exiting", name);
                         return;
                     }
                     //Find new messages
-                    val newMessages = Set.copyOf(Sets.difference(messages.keySet(), inFlight));
-                    if (newMessages.isEmpty()) {
-                        log.trace("No new messages. Ignoring spurious wakeup.");
+                    val newMessageIds = Set.copyOf(Sets.difference(messages.keySet(), inFlight));
+                    if (newMessageIds.isEmpty()) {
+                        log.debug("No new messages. Neither is actor stopped. Ignoring spurious wakeup.");
                         continue;
                     }
-                    inFlight.addAll(newMessages);
-                    newMessages.forEach(m -> actor.executorService.submit(() -> {
+                    inFlight.addAll(newMessageIds);
+                    val messagesToBeDelivered = newMessageIds.stream()
+                                    .map(messages::get)
+                                            .toList();
+                    messagesToBeDelivered.forEach(message -> actor.executorService.submit(() -> {
                         try {
                             actor.rootObserver.execute(ActorObserverContext.builder()
+                                                               .message(message)
                                                                .operation(ActorOperation.CONSUME)
                                                                .build(),
-                                                       () -> this.process(messages.get(m)));
+                                                       () -> process(message));
                         }
                         catch (Throwable throwable) {
-                            log.error("Error", throwable);
+                            log.error("Error processing message", throwable);
+                        }
+                        finally {
+                            releaseMessage(message.id());
                         }
                     }));
                 }
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warn("Monitor thread interrupted for {}", name);
+                log.warn("Monitor thread stopped for {}", name);
             }
             finally {
                 lock.unlock();
             }
         }
 
-        private Void process(final M message) {
+        private void process(final M message) {
             val id = message.id();
             try {
                 boolean valid = actor.validationHandler.apply(message);
@@ -242,6 +261,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
+                                                           .message(message)
                                                            .operation(ActorOperation.SIDELINE)
                                                            .build(),
                                                    () -> actor.sidelineHandler.accept(message));
@@ -249,15 +269,13 @@ public class Actor<M extends Message> implements AutoCloseable {
                 }
             }
             catch (Exception e) {
+                log.error("Error processing message : " + id, e);
                 actor.rootObserver.execute(ActorObserverContext.builder()
-                                                   .operation(ActorOperation.HANDLE_EXCEPTION)
+                                                          .message(message)
+                                                          .operation(ActorOperation.HANDLE_EXCEPTION)
                                                    .build(),
                                            () -> actor.exceptionHandler.accept(message, e));
             }
-            finally {
-                releaseMessage(id);
-            }
-            return null;
         }
 
         private void releaseMessage(String id) {
@@ -265,7 +283,6 @@ public class Actor<M extends Message> implements AutoCloseable {
             try {
                 inFlight.remove(id);
                 messages.remove(id);
-                checkCondition.signalAll(); //Redeliver
             }
             finally {
                 lock.unlock();

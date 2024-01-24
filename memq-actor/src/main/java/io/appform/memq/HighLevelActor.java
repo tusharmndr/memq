@@ -5,7 +5,6 @@ import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.ToIntFunction;
@@ -57,6 +56,10 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
 
     public final boolean isEmpty() {
        return actor.isEmpty();
+    }
+
+    public final boolean isRunning() {
+        return actor.isRunning();
     }
 
 }
