@@ -83,8 +83,8 @@ public class Actor<M extends Message> implements AutoCloseable {
     public final long size() {
         return mailboxes.values()
                 .stream()
-                .map(UnboundedMailbox::size)
-                .count();
+                .mapToLong(UnboundedMailbox::size)
+                .sum();
     }
 
     public final boolean isRunning() {
