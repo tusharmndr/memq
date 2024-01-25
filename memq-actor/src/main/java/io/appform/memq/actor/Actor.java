@@ -289,6 +289,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             finally {
                 lock.unlock();
             }
+            log.info("Actor:{} , queue size post removal:{}", actor.name, size());
         }
     }
 }
