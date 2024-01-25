@@ -81,10 +81,12 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
     public final long size() {
-        return mailboxes.values()
+        val size =  mailboxes.values()
                 .stream()
                 .map(UnboundedMailbox::size)
                 .count();
+        log.info("Actor:{} queue size:{}", name, size);
+        return size;
     }
 
     public final boolean isRunning() {
