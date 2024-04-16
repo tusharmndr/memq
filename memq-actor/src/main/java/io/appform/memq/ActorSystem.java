@@ -32,11 +32,18 @@ public interface ActorSystem extends AutoCloseable {
 
     boolean isRunning();
 
-    default List<ActorObserver> observers(String name, HighLevelActorConfig config) {
-        if (config.isMetricDisabled()) {
-            return new ArrayList<>();
+    default List<ActorObserver> observers(String name, HighLevelActorConfig config, List<ActorObserver> observers) {
+        List<ActorObserver> updatedObservers = new ArrayList<>();
+
+        if (observers != null) {
+            updatedObservers.addAll(observers);
         }
-        return List.of(new ActorMetricObserver(name, metricRegistry()));
+
+        if (!config.isMetricDisabled()) {
+            updatedObservers.add(new ActorMetricObserver(name, metricRegistry()));
+        }
+
+        return updatedObservers;
     }
 
     default <M extends Message> Function<M, Boolean> expiryValidator(HighLevelActorConfig highLevelActorConfig) {
