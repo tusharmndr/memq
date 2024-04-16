@@ -73,8 +73,7 @@ public class TestUtil {
                                      final ActorSystem actorSystem) {
         return new HighLevelActor<>(HighLevelActorType.EXCEPTION_ACTOR,
                 highLevelActorConfig,
-                actorSystem,
-                null
+                actorSystem
         ) {
             @Override
             protected boolean handle(TestIntMessage message) {
