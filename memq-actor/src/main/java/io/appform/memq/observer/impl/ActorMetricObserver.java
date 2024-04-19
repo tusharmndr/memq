@@ -80,7 +80,7 @@ public class ActorMetricObserver extends ActorObserver {
         return ret;
     }
 
-    private MetricData getMetricData(final ActorObserverContext context) {
+    private MetricData getMetricData(final ActorObserverContext<? extends Message> context) {
         val metricKeyData = MetricKeyData.builder()
                 .actorName(actorName)
                 .operation(context.getOperation().name())
