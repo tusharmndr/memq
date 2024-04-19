@@ -95,8 +95,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                 .allMatch(UnboundedMailbox::isRunning);
     }
 
-    public final void publish(final M message) {
-        rootObserver.execute(ActorObserverContext.builder()
+    public final boolean publish(final M message) {
+        return rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
                                      .message(message)
                                      .build(),

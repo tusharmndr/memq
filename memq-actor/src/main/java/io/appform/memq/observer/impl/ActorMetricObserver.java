@@ -1,10 +1,13 @@
-package io.appform.memq.stats;
+package io.appform.memq.observer.impl;
 
 
 import com.codahale.metrics.*;
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
+import io.appform.memq.stats.MetricData;
+import io.appform.memq.stats.MetricKeyData;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -38,7 +41,7 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public void initialize(Actor actor) {
+    public void initialize(Actor<?> actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
                                   (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
                                           new CachedGauge<>(5, TimeUnit.SECONDS) {
@@ -50,17 +53,22 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public void execute(final ActorObserverContext context, final Runnable runnable) {
-        metered(context, runnable);
+    public boolean execute(final ActorObserverContext<? extends Message> context, final Runnable runnable) {
+        return metered(context, runnable);
     }
 
-    private void metered(ActorObserverContext context, Runnable runnable) {
+    private boolean metered(ActorObserverContext<? extends Message> context, Runnable runnable) {
         val metricData = getMetricData(context);
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
+        var ret = false;
         try {
-            proceed(context, runnable);
-            metricData.getSuccess().mark();
+            ret = proceed(context, runnable);
+            if (ret) {
+                metricData.getSuccess().mark();
+            } else {
+                metricData.getRejected().mark();
+            }
         }
         catch (Throwable t) {
             metricData.getFailed().mark();
@@ -69,6 +77,7 @@ public class ActorMetricObserver extends ActorObserver {
         finally {
             timer.stop();
         }
+        return ret;
     }
 
     private MetricData getMetricData(final ActorObserverContext context) {
@@ -86,6 +95,7 @@ public class ActorMetricObserver extends ActorObserver {
                                             () -> new Timer(new SlidingTimeWindowArrayReservoir(60, TimeUnit.SECONDS))))
                 .success(metricRegistry.meter(MetricRegistry.name(metricPrefix, "success")))
                 .failed(metricRegistry.meter(MetricRegistry.name(metricPrefix, "failed")))
+                .rejected(metricRegistry.meter(MetricRegistry.name(metricPrefix, "rejected")))
                 .total(metricRegistry.meter(MetricRegistry.name(metricPrefix, "total")))
                 .build();
     }

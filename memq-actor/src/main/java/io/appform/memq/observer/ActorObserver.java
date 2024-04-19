@@ -1,6 +1,7 @@
 package io.appform.memq.observer;
 
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.Message;
 import lombok.Getter;
 
 
@@ -12,10 +13,10 @@ public abstract class ActorObserver {
         this.next = next;
     }
 
-    public abstract void initialize(Actor actor);
+    public abstract void initialize(Actor<?> actor);
 
-    public abstract void execute(
-            final ActorObserverContext context,
+    public abstract boolean execute(
+            final ActorObserverContext<? extends Message> context,
             final Runnable supplier);
 
     public final ActorObserver setNext(final ActorObserver next) {
@@ -23,14 +24,14 @@ public abstract class ActorObserver {
         return this;
     }
 
-    protected final void proceed(
-            final ActorObserverContext context,
+    protected final boolean proceed(
+            final ActorObserverContext<? extends Message> context,
             final Runnable runnable) {
         if (null == next) {
             runnable.run();
-            return;
+            return true;
         }
-        next.execute(context, runnable);
+        return next.execute(context, runnable);
     }
 
 }
