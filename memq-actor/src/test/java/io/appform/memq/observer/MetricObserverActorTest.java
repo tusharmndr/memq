@@ -37,7 +37,7 @@ class MetricObserverActorTest {
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty); //Wait until all messages are processed
             val metrics = actorSystem.metricRegistry().getMetrics();
-            assertEquals(13, metrics.size());
+            assertEquals(16, metrics.size());
             assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
             assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.HANDLE_EXCEPTION.name() + ".total")).getCount());
             assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + ".total")).getCount());

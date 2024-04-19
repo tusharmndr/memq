@@ -2,6 +2,7 @@ package io.appform.memq.observer;
 
 
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.Message;
 
 
 public final class TerminalActorObserver extends ActorObserver {
@@ -10,11 +11,11 @@ public final class TerminalActorObserver extends ActorObserver {
     }
 
     @Override
-    public void initialize(Actor actor) {
+    public void initialize(Actor<?> actor) {
     }
 
     @Override
-    public void execute(final ActorObserverContext context, final Runnable runnable) {
-        proceed(context, runnable);
+    public boolean execute(final ActorObserverContext<? extends Message> context, final Runnable runnable) {
+        return proceed(context, runnable);
     }
 }

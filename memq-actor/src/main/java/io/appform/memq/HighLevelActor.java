@@ -1,7 +1,6 @@
 package io.appform.memq;
 
 
-import com.google.common.collect.Lists;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
@@ -70,8 +69,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
     }
 
     public final boolean publish(final M message) {
-        actor.publish(message);
-        return true;
+        return actor.publish(message);
     }
 
     public final boolean isEmpty() {

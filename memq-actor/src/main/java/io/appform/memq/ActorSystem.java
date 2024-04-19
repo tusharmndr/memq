@@ -9,7 +9,7 @@ import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
-import io.appform.memq.stats.ActorMetricObserver;
+import io.appform.memq.observer.impl.ActorMetricObserver;
 import lombok.val;
 
 import java.util.ArrayList;
@@ -42,7 +42,6 @@ public interface ActorSystem extends AutoCloseable {
         if (!config.isMetricDisabled()) {
             updatedObservers.add(new ActorMetricObserver(name, metricRegistry()));
         }
-
         return updatedObservers;
     }
 
