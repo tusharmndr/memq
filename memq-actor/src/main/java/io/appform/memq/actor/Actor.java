@@ -17,10 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -97,11 +94,11 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     public final boolean publish(final M message) {
         return rootObserver.execute(ActorObserverContext.builder()
-                                     .operation(ActorOperation.PUBLISH)
-                                     .message(message)
-                                     .build(),
-                             () -> mailboxes.get(partitioner.applyAsInt(message))
-                                     .publish(message));
+                        .operation(ActorOperation.PUBLISH)
+                        .message(message)
+                        .build(),
+                () -> mailboxes.get(partitioner.applyAsInt(message))
+                        .publish(message));
     }
 
     public final void start() {
@@ -173,7 +170,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             monitorFuture = actor.messageDispatcher.submit(this::monitor);
         }
 
-        public final void publish(final M message) {
+        public final boolean publish(final M message) {
             lock.lock();
             try {
                 val messageId = message.id();
@@ -183,6 +180,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             finally {
                 lock.unlock();
             }
+            return true;
         }
 
 
@@ -251,22 +249,31 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
         }
 
-        private void process(final M message) {
+        private boolean process(final M message) {
             val id = message.id();
+            var status = false;
             try {
-                boolean valid = actor.validationHandler.apply(message);
+                val valid = actor.rootObserver.execute(ActorObserverContext.builder()
+                                .message(message)
+                                .operation(ActorOperation.VALIDATE)
+                                .build(),
+                        () -> actor.validationHandler.apply(message));
+
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
                 }
                 else {
-                    val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
+                    status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
-                                                           .message(message)
-                                                           .operation(ActorOperation.SIDELINE)
-                                                           .build(),
-                                                   () -> actor.sidelineHandler.accept(message));
+                                        .message(message)
+                                        .operation(ActorOperation.SIDELINE)
+                                        .build(),
+                                () -> {
+                                    actor.sidelineHandler.accept(message);
+                                    return true;
+                                });
                     }
                 }
             }
@@ -276,8 +283,12 @@ public class Actor<M extends Message> implements AutoCloseable {
                                                           .message(message)
                                                           .operation(ActorOperation.HANDLE_EXCEPTION)
                                                    .build(),
-                                           () -> actor.exceptionHandler.accept(message, e));
+                                           () -> {
+                                            actor.exceptionHandler.accept(message, e);
+                                            return true;
+                                           });
             }
+            return status;
         }
 
         private void releaseMessage(String id) {

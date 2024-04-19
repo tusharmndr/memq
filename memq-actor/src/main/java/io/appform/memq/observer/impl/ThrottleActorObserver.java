@@ -8,6 +8,8 @@ import io.appform.memq.observer.ActorObserverContext;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
+import java.util.function.BooleanSupplier;
+
 
 @Slf4j
 public class ThrottleActorObserver extends ActorObserver {
@@ -27,7 +29,7 @@ public class ThrottleActorObserver extends ActorObserver {
     }
 
     @Override
-    public boolean execute(final ActorObserverContext<? extends Message> context, final Runnable runnable) {
+    public boolean execute(final ActorObserverContext<? extends Message> context, final BooleanSupplier supplier) {
         if (context.getOperation() == ActorOperation.PUBLISH) {
             val currSize = actor.size();
             if (currSize >= this.size) {
@@ -36,6 +38,6 @@ public class ThrottleActorObserver extends ActorObserver {
                 return false;
             }
         }
-        return proceed(context, runnable);
+        return proceed(context, supplier);
     }
 }

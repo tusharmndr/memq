@@ -15,6 +15,7 @@ import lombok.val;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 @Slf4j
 public class ActorMetricObserver extends ActorObserver {
@@ -53,21 +54,21 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public boolean execute(final ActorObserverContext<? extends Message> context, final Runnable runnable) {
-        return metered(context, runnable);
+    public boolean execute(final ActorObserverContext<? extends Message> context, final BooleanSupplier supplier) {
+        return metered(context, supplier);
     }
 
-    private boolean metered(ActorObserverContext<? extends Message> context, Runnable runnable) {
+    private boolean metered(ActorObserverContext<? extends Message> context, BooleanSupplier supplier) {
         val metricData = getMetricData(context);
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
         var ret = false;
         try {
-            ret = proceed(context, runnable);
+            ret = proceed(context, supplier);
             if (ret) {
                 metricData.getSuccess().mark();
             } else {
-                metricData.getRejected().mark();
+                metricData.getFailed().mark();
             }
         }
         catch (Throwable t) {
@@ -80,7 +81,7 @@ public class ActorMetricObserver extends ActorObserver {
         return ret;
     }
 
-    private MetricData getMetricData(final ActorObserverContext context) {
+    private MetricData getMetricData(final ActorObserverContext<? extends Message> context) {
         val metricKeyData = MetricKeyData.builder()
                 .actorName(actorName)
                 .operation(context.getOperation().name())
@@ -95,7 +96,6 @@ public class ActorMetricObserver extends ActorObserver {
                                             () -> new Timer(new SlidingTimeWindowArrayReservoir(60, TimeUnit.SECONDS))))
                 .success(metricRegistry.meter(MetricRegistry.name(metricPrefix, "success")))
                 .failed(metricRegistry.meter(MetricRegistry.name(metricPrefix, "failed")))
-                .rejected(metricRegistry.meter(MetricRegistry.name(metricPrefix, "rejected")))
                 .total(metricRegistry.meter(MetricRegistry.name(metricPrefix, "total")))
                 .build();
     }

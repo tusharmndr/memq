@@ -27,7 +27,7 @@ public class ThrottleActorObserverTest {
 
     @Test
     @SneakyThrows
-    void testBackpressureActor(ActorSystem actorSystem) {
+    void testThrottleActor(ActorSystem actorSystem) {
         val metricPrefix = "actor." + TestUtil.HighLevelActorType.BLOCKING_ACTOR.name() + ".";
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
@@ -52,8 +52,7 @@ public class ThrottleActorObserverTest {
         val metrics = actorSystem.metricRegistry().getMetrics();
         assertEquals(11, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
         assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".success")).getCount());
-        assertEquals(0, ((Meter)  metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".failed")).getCount());
-        assertEquals(10, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".rejected")).getCount());
+        assertEquals(10, ((Meter)  metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".failed")).getCount());
 
     }
 }
