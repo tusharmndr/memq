@@ -11,6 +11,5 @@ public class MetricData {
     Meter total;
     Meter success;
     Meter failed;
-    Meter rejected;
     Timer timer;
 }
