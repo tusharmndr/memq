@@ -4,11 +4,11 @@ import com.codahale.metrics.MetricRegistry;
 import io.appform.config.ExecutorConfig;
 import io.appform.config.MemqConfig;
 import io.appform.memq.HighLevelActor;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
+import io.appform.memq.mailbox.config.UnBoundedMailboxConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
-import org.apache.commons.lang3.builder.ToStringExclude;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -55,6 +55,7 @@ class MemqActorSystemTest {
                     .partitions(SINGLE_PARTITION)
                     .retryConfig(new NoRetryConfig())
                     .executorName(GLOBAL_THREADPOOL_NAME)
+                    .mailboxConfig(new UnBoundedMailboxConfig())
                     .build();
             val highLevelActor = new HighLevelActor<>(ActorType.TEST_HIGH_LEVEL_ACTOR, highLevelActorConfig, memqActorSystem) {
                 @Override

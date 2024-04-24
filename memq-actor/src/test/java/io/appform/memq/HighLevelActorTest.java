@@ -1,8 +1,11 @@
 package io.appform.memq;
 
+import com.codahale.metrics.Meter;
 import com.google.common.base.Stopwatch;
+import io.appform.memq.actor.ActorOperation;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.helper.TestUtil;
+import io.appform.memq.mailbox.config.BoundedMailboxConfig;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -11,11 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 @ExtendWith(MemQTestExtension.class)
@@ -37,6 +42,37 @@ class HighLevelActorTest {
     @SneakyThrows
     void testSuccessMultiPartition(ActorSystem actorSystem) {
         testSuccess(4, actorSystem);
+    }
+
+    @Test
+    @SneakyThrows
+    void testBoundedMailboxActorTest(ActorSystem actorSystem) {
+        val metricPrefix = "actor." + TestUtil.HighLevelActorType.BLOCKING_ACTOR.name() + ".";
+        val counter = new AtomicInteger();
+        val sideline = new AtomicBoolean();
+        val blockConsume = new AtomicBoolean(true);
+        val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false,
+                new BoundedMailboxConfig(1));
+        val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
+                actorConfig, actorSystem, List.of());
+        val publish = actor.publish(new TestIntMessage(1));
+        assertTrue(publish);
+
+        IntStream.range(0, 10).boxed().forEach(i -> {
+            val newPublish = actor.publish(new TestIntMessage(i));
+            assertFalse(newPublish);
+        });
+
+        blockConsume.set(false);
+        Awaitility.await()
+                .timeout(Duration.ofMinutes(1))
+                .catchUncaughtExceptions()
+                .until(actor::isEmpty);
+        val metrics = actorSystem.metricRegistry().getMetrics();
+        assertEquals(11, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".success")).getCount());
+        assertEquals(10, ((Meter)  metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".failed")).getCount());
+
     }
 
     @SneakyThrows
