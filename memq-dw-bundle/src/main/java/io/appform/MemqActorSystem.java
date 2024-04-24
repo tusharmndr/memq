@@ -5,7 +5,7 @@ import io.appform.config.ExecutorConfig;
 import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.dropwizard.lifecycle.Managed;

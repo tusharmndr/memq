@@ -5,10 +5,12 @@ import com.google.common.collect.Lists;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
+import io.appform.memq.mailbox.config.MailboxConfig;
+import io.appform.memq.mailbox.config.UnBoundedMailboxConfig;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
@@ -135,12 +137,26 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, new UnBoundedMailboxConfig());
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          MailboxConfig mailboxConfig) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), mailboxConfig);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          ExceptionHandlerConfig exceptionHandlerConfig,
+                                                          MailboxConfig mailboxConfig) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
                 .retryConfig(new NoRetryConfig())
                 .executorName(GLOBAL_EXECUTOR_SERVICE_GROUP)
                 .metricDisabled(metricDisabled)
                 .exceptionHandlerConfig(exceptionHandlerConfig)
+                .mailboxConfig(mailboxConfig)
                 .build();
     }
 }

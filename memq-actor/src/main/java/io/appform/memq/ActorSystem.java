@@ -2,7 +2,6 @@ package io.appform.memq;
 
 import com.codahale.metrics.MetricRegistry;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
