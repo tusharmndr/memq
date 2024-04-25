@@ -3,6 +3,8 @@ package io.appform.memq.observer;
 import io.appform.memq.actor.Actor;
 import lombok.Getter;
 
+import java.util.function.BooleanSupplier;
+
 
 public abstract class ActorObserver {
     @Getter
@@ -14,23 +16,22 @@ public abstract class ActorObserver {
 
     public abstract void initialize(Actor actor);
 
-    public abstract void execute(
+    public abstract boolean execute(
             final ActorObserverContext context,
-            final Runnable supplier);
+            final BooleanSupplier supplier);
 
     public final ActorObserver setNext(final ActorObserver next) {
         this.next = next;
         return this;
     }
 
-    protected final void proceed(
+    protected final boolean proceed(
             final ActorObserverContext context,
-            final Runnable runnable) {
+            final BooleanSupplier supplier) {
         if (null == next) {
-            runnable.run();
-            return;
+            return supplier.getAsBoolean();
         }
-        next.execute(context, runnable);
+        return next.execute(context, supplier);
     }
 
 }

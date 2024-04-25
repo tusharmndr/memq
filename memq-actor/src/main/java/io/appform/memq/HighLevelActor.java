@@ -50,8 +50,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
     }
 
     public final boolean publish(final M message) {
-        actor.publish(message);
-        return true;
+        return actor.publish(message);
     }
 
     public final boolean isEmpty() {
