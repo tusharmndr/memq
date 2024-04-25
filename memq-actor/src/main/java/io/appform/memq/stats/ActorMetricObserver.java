@@ -3,6 +3,7 @@ package io.appform.memq.stats;
 
 import com.codahale.metrics.*;
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import lombok.Getter;
@@ -39,7 +40,7 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public void initialize(Actor actor) {
+    public void initialize(Actor<? extends Message> actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
                                   (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
                                           new CachedGauge<>(5, TimeUnit.SECONDS) {
@@ -51,11 +52,11 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public boolean execute(final ActorObserverContext context, final BooleanSupplier supplier) {
+    public boolean execute(final ActorObserverContext<? extends Message> context, final BooleanSupplier supplier) {
         return metered(context, supplier);
     }
 
-    private boolean metered(ActorObserverContext context, BooleanSupplier supplier) {
+    private boolean metered(ActorObserverContext<? extends Message> context, BooleanSupplier supplier) {
         val metricData = getMetricData(context);
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
@@ -78,7 +79,7 @@ public class ActorMetricObserver extends ActorObserver {
         }
     }
 
-    private MetricData getMetricData(final ActorObserverContext context) {
+    private MetricData getMetricData(final ActorObserverContext<? extends Message> context) {
         val metricKeyData = MetricKeyData.builder()
                 .actorName(actorName)
                 .operation(context.getOperation().name())

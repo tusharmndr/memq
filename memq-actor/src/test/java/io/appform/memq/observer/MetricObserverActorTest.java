@@ -25,22 +25,34 @@ class MetricObserverActorTest {
     @Test
     @SneakyThrows
     void testMetrics(ActorSystem actorSystem) {
-            val metricPrefix = "actor." + TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name() + ".";
-            val counter = new AtomicInteger();
-            val sideline = new AtomicBoolean();
-            val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false);
-            val actor = TestUtil.allExceptionActor(counter, sideline,
-                    actorConfig, actorSystem);
-            actor.publish(new TestIntMessage(1));
-            Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
-                    .catchUncaughtExceptions()
-                    .until(actor::isEmpty); //Wait until all messages are processed
-            val metrics = actorSystem.metricRegistry().getMetrics();
-            assertEquals(13, metrics.size());
-            assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
-            assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.HANDLE_EXCEPTION.name() + ".total")).getCount());
-            assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + ".total")).getCount());
+        val metricPrefix = "actor." + TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name() + ".";
+        val totalPostfix = ".total";
+        val successPostfix = ".success";
+        val failedPostfix = ".failed";
+        val counter = new AtomicInteger();
+        val sideline = new AtomicBoolean();
+        val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false);
+        val actor = TestUtil.allExceptionActor(counter, sideline,
+                actorConfig, actorSystem);
+        actor.publish(new TestIntMessage(1));
+        Awaitility.await()
+                .timeout(Duration.ofMinutes(1))
+                .catchUncaughtExceptions()
+                .until(actor::isEmpty); //Wait until all messages are processed
+        val metrics = actorSystem.metricRegistry().getMetrics();
+        assertEquals(17, metrics.size());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + totalPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + successPostfix)).getCount());
+        assertEquals(0, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + failedPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.VALIDATE.name() + totalPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.VALIDATE.name() + successPostfix)).getCount());
+        assertEquals(0, ((Meter) metrics.get(metricPrefix + ActorOperation.VALIDATE.name() + failedPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.HANDLE_EXCEPTION.name() + totalPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.HANDLE_EXCEPTION.name() + successPostfix)).getCount());
+        assertEquals(0, ((Meter) metrics.get(metricPrefix + ActorOperation.HANDLE_EXCEPTION.name() + failedPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + totalPostfix)).getCount());
+        assertEquals(0, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + successPostfix)).getCount());
+        assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + failedPostfix)).getCount());
     }
 
     @Test
