@@ -254,7 +254,11 @@ public class Actor<M extends Message> implements AutoCloseable {
             val id = message.id();
             var status = false;
             try {
-                val valid =  actor.validationHandler.apply(message);
+                val valid = actor.rootObserver.execute(ActorObserverContext.builder()
+                                .message(message)
+                                .operation(ActorOperation.VALIDATE)
+                                .build(),
+                        () -> actor.validationHandler.apply(message));
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
                     return false;
