@@ -5,7 +5,7 @@ import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.ActorOperation;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.helper.TestUtil;
-import io.appform.memq.mailbox.config.BoundedMailboxConfig;
+import io.appform.memq.mailbox.MailboxConfig;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -52,7 +52,7 @@ class HighLevelActorTest {
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false,
-                new BoundedMailboxConfig(1));
+                new MailboxConfig(1L));
         val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                 actorConfig, actorSystem, List.of());
         val publish = actor.publish(new TestIntMessage(1));

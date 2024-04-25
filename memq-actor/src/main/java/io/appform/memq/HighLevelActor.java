@@ -2,7 +2,6 @@ package io.appform.memq;
 
 
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import lombok.Getter;
@@ -58,6 +57,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createRetryer(highLevelActorConfig),
                 highLevelActorConfig.getPartitions(),
                 actorSystem.partitioner(highLevelActorConfig, partitioner),
+                highLevelActorConfig.getMailboxConfig(),
                 actorSystem.observers(type.name(), highLevelActorConfig, observers));
         actorSystem.register(actor);
     }

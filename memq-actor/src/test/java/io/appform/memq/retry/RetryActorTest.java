@@ -5,7 +5,7 @@ import io.appform.memq.Constants;
 import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
-import io.appform.memq.mailbox.config.UnBoundedMailboxConfig;
+import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.retry.config.*;
 import io.appform.memq.helper.TestUtil;
 import lombok.SneakyThrows;
@@ -104,8 +104,8 @@ class RetryActorTest {
                     .partitions(Constants.SINGLE_PARTITION)
                     .executorName(TestUtil.GLOBAL_EXECUTOR_SERVICE_GROUP)
                     .retryConfig(retryConfig)
+                    .mailboxConfig(new MailboxConfig())
                     .exceptionHandlerConfig(new SidelineConfig())
-                    .mailboxConfig(new UnBoundedMailboxConfig())
                     .build();
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     highLevelActorConfig, actorSystem);

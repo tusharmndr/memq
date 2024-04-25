@@ -6,7 +6,7 @@ import io.appform.config.MemqConfig;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
-import io.appform.memq.mailbox.config.UnBoundedMailboxConfig;
+import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -55,7 +55,7 @@ class MemqActorSystemTest {
                     .partitions(SINGLE_PARTITION)
                     .retryConfig(new NoRetryConfig())
                     .executorName(GLOBAL_THREADPOOL_NAME)
-                    .mailboxConfig(new UnBoundedMailboxConfig())
+                    .mailboxConfig(new MailboxConfig())
                     .build();
             val highLevelActor = new HighLevelActor<>(ActorType.TEST_HIGH_LEVEL_ACTOR, highLevelActorConfig, memqActorSystem) {
                 @Override
