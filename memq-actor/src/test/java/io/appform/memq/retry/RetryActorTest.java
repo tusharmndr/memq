@@ -2,9 +2,10 @@ package io.appform.memq.retry;
 
 import com.google.common.base.Stopwatch;
 import io.appform.memq.Constants;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
+import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.retry.config.*;
 import io.appform.memq.helper.TestUtil;
 import lombok.SneakyThrows;
@@ -103,6 +104,7 @@ class RetryActorTest {
                     .partitions(Constants.SINGLE_PARTITION)
                     .executorName(TestUtil.GLOBAL_EXECUTOR_SERVICE_GROUP)
                     .retryConfig(retryConfig)
+                    .mailboxConfig(new MailboxConfig())
                     .exceptionHandlerConfig(new SidelineConfig())
                     .build();
             val actor = TestUtil.allExceptionActor(counter, sideline,
