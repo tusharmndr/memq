@@ -3,6 +3,8 @@ package io.appform.memq.observer;
 
 import io.appform.memq.actor.Actor;
 
+import java.util.function.BooleanSupplier;
+
 
 public final class TerminalActorObserver extends ActorObserver {
     public TerminalActorObserver() {
@@ -14,7 +16,7 @@ public final class TerminalActorObserver extends ActorObserver {
     }
 
     @Override
-    public void execute(final ActorObserverContext context, final Runnable runnable) {
-        proceed(context, runnable);
+    public boolean execute(final ActorObserverContext context, final BooleanSupplier supplier) {
+        return proceed(context, supplier);
     }
 }

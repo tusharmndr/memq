@@ -12,6 +12,7 @@ import lombok.val;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 @Slf4j
 public class ActorMetricObserver extends ActorObserver {
@@ -50,17 +51,23 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public void execute(final ActorObserverContext context, final Runnable runnable) {
-        metered(context, runnable);
+    public boolean execute(final ActorObserverContext context, final BooleanSupplier supplier) {
+        return metered(context, supplier);
     }
 
-    private void metered(ActorObserverContext context, Runnable runnable) {
+    private boolean metered(ActorObserverContext context, BooleanSupplier supplier) {
         val metricData = getMetricData(context);
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
         try {
-            proceed(context, runnable);
-            metricData.getSuccess().mark();
+            val ret = proceed(context, supplier);
+            if(ret) {
+                metricData.getSuccess().mark();
+            }
+            else {
+                metricData.getFailed().mark();
+            }
+            return ret;
         }
         catch (Throwable t) {
             metricData.getFailed().mark();

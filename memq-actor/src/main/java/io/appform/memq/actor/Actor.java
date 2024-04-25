@@ -93,8 +93,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                 .allMatch(UnboundedMailbox::isRunning);
     }
 
-    public final void publish(final M message) {
-        rootObserver.execute(ActorObserverContext.builder()
+    public final boolean publish(final M message) {
+        return rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
                                      .message(message)
                                      .build(),
@@ -171,7 +171,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             monitorFuture = actor.messageDispatcher.submit(this::monitor);
         }
 
-        public final void publish(final M message) {
+        public final boolean publish(final M message) {
             lock.lock();
             try {
                 val messageId = message.id();
@@ -181,6 +181,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             finally {
                 lock.unlock();
             }
+            return true;
         }
 
 
@@ -249,33 +250,41 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
         }
 
-        private void process(final M message) {
+        private boolean process(final M message) {
             val id = message.id();
+            var status = false;
             try {
-                boolean valid = actor.validationHandler.apply(message);
+                val valid =  actor.validationHandler.apply(message);
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
+                    return false;
                 }
                 else {
-                    val status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
+                    status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
-                                                           .message(message)
-                                                           .operation(ActorOperation.SIDELINE)
-                                                           .build(),
-                                                   () -> actor.sidelineHandler.accept(message));
+                                        .message(message)
+                                        .operation(ActorOperation.SIDELINE)
+                                        .build(),
+                                () -> {
+                                    actor.sidelineHandler.accept(message);
+                                    return true;
+                                });
                     }
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.error("Error processing message : " + id, e);
                 actor.rootObserver.execute(ActorObserverContext.builder()
-                                                          .message(message)
-                                                          .operation(ActorOperation.HANDLE_EXCEPTION)
-                                                   .build(),
-                                           () -> actor.exceptionHandler.accept(message, e));
+                                .message(message)
+                                .operation(ActorOperation.HANDLE_EXCEPTION)
+                                .build(),
+                        () -> {
+                            actor.exceptionHandler.accept(message, e);
+                            return true;
+                        });
             }
+            return status;
         }
 
         private void releaseMessage(String id) {
