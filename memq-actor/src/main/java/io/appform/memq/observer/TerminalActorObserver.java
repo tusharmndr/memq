@@ -13,7 +13,7 @@ public final class TerminalActorObserver extends ActorObserver {
     }
 
     @Override
-    public void initialize(Actor<?> actor) {
+    public void initialize(Actor<? extends Message> actor) {
     }
 
     @Override

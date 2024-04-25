@@ -15,7 +15,7 @@ public abstract class ActorObserver {
         this.next = next;
     }
 
-    public abstract void initialize(Actor<?> actor);
+    public abstract void initialize(Actor<? extends Message> actor);
 
     public abstract boolean execute(
             final ActorObserverContext<? extends Message> context,

@@ -1,4 +1,4 @@
-package io.appform.memq.observer.impl;
+package io.appform.memq.stats;
 
 
 import com.codahale.metrics.*;
@@ -6,8 +6,6 @@ import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
-import io.appform.memq.stats.MetricData;
-import io.appform.memq.stats.MetricKeyData;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -42,7 +40,7 @@ public class ActorMetricObserver extends ActorObserver {
     }
 
     @Override
-    public void initialize(Actor<?> actor) {
+    public void initialize(Actor<? extends Message> actor) {
         this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "size"),
                                   (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
                                           new CachedGauge<>(5, TimeUnit.SECONDS) {
@@ -62,14 +60,15 @@ public class ActorMetricObserver extends ActorObserver {
         val metricData = getMetricData(context);
         metricData.getTotal().mark();
         val timer = metricData.getTimer().time();
-        var ret = false;
         try {
-            ret = proceed(context, supplier);
-            if (ret) {
+            val ret = proceed(context, supplier);
+            if(ret) {
                 metricData.getSuccess().mark();
-            } else {
+            }
+            else {
                 metricData.getFailed().mark();
             }
+            return ret;
         }
         catch (Throwable t) {
             metricData.getFailed().mark();
@@ -78,7 +77,6 @@ public class ActorMetricObserver extends ActorObserver {
         finally {
             timer.stop();
         }
-        return ret;
     }
 
     private MetricData getMetricData(final ActorObserverContext<? extends Message> context) {

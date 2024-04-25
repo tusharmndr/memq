@@ -2,6 +2,7 @@ package io.appform.memq;
 
 
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import lombok.Getter;
@@ -49,16 +50,15 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
             List<ActorObserver> observers) {
         this.type = type;
         this.actor = new Actor<>(type.name(),
-                                  actorSystem.createOrGetExecutorService(highLevelActorConfig),
-                                  actorSystem.expiryValidator(highLevelActorConfig),
-                                  this::handle,
-                                  this::sideline,
-                                  actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
-                                  actorSystem.createRetryer(highLevelActorConfig),
-                                  highLevelActorConfig.getPartitions(),
-                                  actorSystem.partitioner(highLevelActorConfig, partitioner),
-                                  highLevelActorConfig.getMailboxConfig(),
-                                  actorSystem.observers(type.name(), highLevelActorConfig, observers));
+                actorSystem.createOrGetExecutorService(highLevelActorConfig),
+                actorSystem.expiryValidator(highLevelActorConfig),
+                this::handle,
+                this::sideline,
+                actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
+                actorSystem.createRetryer(highLevelActorConfig),
+                highLevelActorConfig.getPartitions(),
+                actorSystem.partitioner(highLevelActorConfig, partitioner),
+                actorSystem.observers(type.name(), highLevelActorConfig, observers));
         actorSystem.register(actor);
     }
 
@@ -72,12 +72,12 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         return actor.publish(message);
     }
 
-    public final boolean isEmpty() {
-       return actor.isEmpty();
+    public final long size() {
+        return actor.size();
     }
 
-    public final long size() {
-       return actor.size();
+    public final boolean isEmpty() {
+       return actor.isEmpty();
     }
 
     public final boolean isRunning() {
