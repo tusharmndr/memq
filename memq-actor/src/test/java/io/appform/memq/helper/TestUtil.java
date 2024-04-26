@@ -5,15 +5,18 @@ import com.google.common.collect.Lists;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
+import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
+import org.awaitility.Awaitility;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +26,8 @@ public class TestUtil {
 
     public enum HighLevelActorType {
         EXCEPTION_ACTOR,
+        BLOCKING_ACTOR
+        ;
     }
 
     public static final String GLOBAL_EXECUTOR_SERVICE_GROUP = "global";
@@ -67,6 +72,33 @@ public class TestUtil {
         };
     }
 
+    public static HighLevelActor<HighLevelActorType, TestIntMessage> blockingActor(final AtomicInteger counter,
+                                                                                   final AtomicBoolean sideline,
+                                                                                   final AtomicBoolean blockConsume,
+                                                                                   final HighLevelActorConfig highLevelActorConfig,
+                                                                                   final ActorSystem actorSystem,
+                                                                                   final List<ActorObserver> observers) {
+        return new HighLevelActor<>(HighLevelActorType.BLOCKING_ACTOR,
+                highLevelActorConfig,
+                actorSystem,
+                observers
+        ) {
+            @Override
+            protected boolean handle(TestIntMessage message) {
+                counter.addAndGet(message.getValue());
+                while(blockConsume.get()) {
+                    Awaitility.waitAtMost(Duration.ofMillis(100));
+                }
+                return true;
+            }
+
+            @Override
+            protected void sideline(TestIntMessage message) {
+                sideline.set(true);
+            }
+        };
+    }
+
     public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
                                      final AtomicBoolean sideline,
                                      final HighLevelActorConfig highLevelActorConfig,
@@ -105,8 +137,22 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          long maxSizePerPartition) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          ExceptionHandlerConfig exceptionHandlerConfig,
+                                                          long maxSizePerPartition) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
+                .maxSizePerPartition(maxSizePerPartition)
                 .retryConfig(new NoRetryConfig())
                 .executorName(GLOBAL_EXECUTOR_SERVICE_GROUP)
                 .metricDisabled(metricDisabled)

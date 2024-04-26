@@ -31,7 +31,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final ExecutorService executorService;
     private final ExecutorService messageDispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
-    private final Map<Integer, UnboundedMailbox<M>> mailboxes;
+    private final Map<Integer, Mailbox<M>> mailboxes;
     private final Function<M, Boolean> validationHandler;
     private final Function<M, Boolean> consumerHandler;
     private final Consumer<M> sidelineHandler;
@@ -50,6 +50,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             BiConsumer<M, Throwable> exceptionHandler,
             RetryStrategy retryer,
             int partitions,
+            long maxSizePerPartition,
             ToIntFunction<M> partitioner,
             List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
@@ -70,27 +71,27 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.partitioner = partitioner;
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
-                .collect(Collectors.toMap(Function.identity(), i -> new UnboundedMailbox<M>(this, i)));
+                .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, maxSizePerPartition)));
         this.rootObserver = setupObserver(observers);
     }
 
     public final boolean isEmpty() {
         return mailboxes.values()
                 .stream()
-                .allMatch(UnboundedMailbox::isEmpty);
+                .allMatch(Mailbox::isEmpty);
     }
 
     public final long size() {
         return mailboxes.values()
                 .stream()
-                .mapToLong(UnboundedMailbox::size)
+                .mapToLong(Mailbox::size)
                 .sum();
     }
 
     public final boolean isRunning() {
         return mailboxes.values()
                 .stream()
-                .allMatch(UnboundedMailbox::isRunning);
+                .allMatch(Mailbox::isRunning);
     }
 
     public final boolean publish(final M message) {
@@ -103,12 +104,12 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
     public final void start() {
-        mailboxes.values().forEach(UnboundedMailbox::start);
+        mailboxes.values().forEach(Mailbox::start);
     }
 
     @Override
     public final void close() {
-        mailboxes.values().forEach(UnboundedMailbox::close);
+        mailboxes.values().forEach(Mailbox::close);
     }
 
 
@@ -128,10 +129,11 @@ public class Actor<M extends Message> implements AutoCloseable {
         return startObserver;
     }
 
-    private static class UnboundedMailbox<M extends Message> implements AutoCloseable {
+    private static class Mailbox<M extends Message> implements AutoCloseable {
 
         private final Actor<M> actor;
         private final String name;
+        private final long maxSize;
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition checkCondition = lock.newCondition();
         private final Map<String, M> messages = new HashMap<>();
@@ -139,8 +141,9 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
 
-        public UnboundedMailbox(Actor<M> actor, int partition) {
+        public Mailbox(Actor<M> actor, int partition, long maxSize) {
             this.actor = actor;
+            this.maxSize = maxSize;
             this.name = actor.name + "-" + partition;
         }
 
@@ -174,11 +177,16 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final boolean publish(final M message) {
             lock.lock();
             try {
+                val currSize = messages.size();
+                if (currSize >= this.maxSize) {
+                    log.warn("Blocking publish for as curr size:{} is more than specified threshold:{}",
+                            currSize, this.maxSize);
+                    return false;
+                }
                 val messageId = message.id();
                 messages.putIfAbsent(messageId, message);
                 checkCondition.signalAll();
-            }
-            finally {
+            } finally {
                 lock.unlock();
             }
             return true;

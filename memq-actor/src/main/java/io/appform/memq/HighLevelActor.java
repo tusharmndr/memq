@@ -2,7 +2,6 @@ package io.appform.memq;
 
 
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
 import io.appform.memq.observer.ActorObserver;
 import lombok.Getter;
@@ -57,6 +56,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
                 actorSystem.createRetryer(highLevelActorConfig),
                 highLevelActorConfig.getPartitions(),
+                highLevelActorConfig.getMaxSizePerPartition(),
                 actorSystem.partitioner(highLevelActorConfig, partitioner),
                 actorSystem.observers(type.name(), highLevelActorConfig, observers));
         actorSystem.register(actor);
