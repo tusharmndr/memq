@@ -9,7 +9,6 @@ import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
-import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
@@ -138,26 +137,26 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
-        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, new MailboxConfig());
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
-                                                          MailboxConfig mailboxConfig) {
-        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), mailboxConfig);
+                                                          long maxSizePerPartition) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig,
-                                                          MailboxConfig mailboxConfig) {
+                                                          long maxSizePerPartition) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
+                .maxSizePerPartition(maxSizePerPartition)
                 .retryConfig(new NoRetryConfig())
                 .executorName(GLOBAL_EXECUTOR_SERVICE_GROUP)
                 .metricDisabled(metricDisabled)
                 .exceptionHandlerConfig(exceptionHandlerConfig)
-                .mailboxConfig(mailboxConfig)
                 .build();
     }
 }
