@@ -2,7 +2,6 @@ package io.appform.memq;
 
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
-import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.config.RetryConfig;
 import lombok.*;
@@ -25,6 +24,10 @@ public class HighLevelActorConfig {
     @Builder.Default
     int partitions = 1;
 
+    @Min(1)
+    @Builder.Default
+    long maxSizePerPartition = Long.MAX_VALUE;
+
     @Valid
     @NotNull
     @Builder.Default
@@ -34,10 +37,6 @@ public class HighLevelActorConfig {
     @NotNull
     @Builder.Default
     ExceptionHandlerConfig exceptionHandlerConfig = new DropConfig();
-
-    @Valid
-    @Builder.Default
-    MailboxConfig mailboxConfig = new MailboxConfig();
 
     @NotNull
     @Builder.Default

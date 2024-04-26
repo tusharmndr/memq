@@ -56,8 +56,8 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
                 actorSystem.createRetryer(highLevelActorConfig),
                 highLevelActorConfig.getPartitions(),
+                highLevelActorConfig.getMaxSizePerPartition(),
                 actorSystem.partitioner(highLevelActorConfig, partitioner),
-                highLevelActorConfig.getMailboxConfig(),
                 actorSystem.observers(type.name(), highLevelActorConfig, observers));
         actorSystem.register(actor);
     }

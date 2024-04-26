@@ -2,7 +2,6 @@ package io.appform.memq.actor;
 
 import com.google.common.base.Stopwatch;
 import io.appform.memq.helper.message.TestIntMessage;
-import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.retry.config.NoRetryConfig;
 import io.appform.memq.retry.impl.NoRetryStrategy;
 import lombok.SneakyThrows;
@@ -79,8 +78,8 @@ class ActorTest {
                 },
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,
+                Long.MAX_VALUE,
                 message -> Math.absExact(message.id().hashCode()) % partition,
-                new MailboxConfig(),
                 new ArrayList<>());
     }
 

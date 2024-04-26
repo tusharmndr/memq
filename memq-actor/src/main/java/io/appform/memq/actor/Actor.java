@@ -1,7 +1,6 @@
 package io.appform.memq.actor;
 
 import com.google.common.collect.Sets;
-import io.appform.memq.mailbox.MailboxConfig;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
 import io.appform.memq.observer.TerminalActorObserver;
@@ -51,8 +50,8 @@ public class Actor<M extends Message> implements AutoCloseable {
             BiConsumer<M, Throwable> exceptionHandler,
             RetryStrategy retryer,
             int partitions,
+            long maxSizePerPartition,
             ToIntFunction<M> partitioner,
-            MailboxConfig mailboxConfig,
             List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
         Objects.requireNonNull(executorService, "Executor service cannot be null");
@@ -72,7 +71,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.partitioner = partitioner;
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
-                .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, mailboxConfig.getMaxSizePerPartition())));
+                .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, maxSizePerPartition)));
         this.rootObserver = setupObserver(observers);
     }
 
