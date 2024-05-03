@@ -5,7 +5,7 @@ import com.google.common.collect.Lists;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.actor.Actor;
-import io.appform.memq.actor.HighLevelActorConfig;
+import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
@@ -138,8 +138,22 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          long maxSizePerPartition) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          ExceptionHandlerConfig exceptionHandlerConfig,
+                                                          long maxSizePerPartition) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
+                .maxSizePerPartition(maxSizePerPartition)
                 .retryConfig(new NoRetryConfig())
                 .executorName(GLOBAL_EXECUTOR_SERVICE_GROUP)
                 .metricDisabled(metricDisabled)

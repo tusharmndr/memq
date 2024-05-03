@@ -1,4 +1,4 @@
-package io.appform.memq.actor;
+package io.appform.memq;
 
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
@@ -23,6 +23,10 @@ public class HighLevelActorConfig {
     @Max(100)
     @Builder.Default
     int partitions = 1;
+
+    @Min(1)
+    @Builder.Default
+    long maxSizePerPartition = Long.MAX_VALUE;
 
     @Valid
     @NotNull
