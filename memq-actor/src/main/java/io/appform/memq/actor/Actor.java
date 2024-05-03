@@ -271,7 +271,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             val message = internalMessage.getMessage();
             var status = false;
             val attempt = new AtomicInteger(1);
-            var messageMeta = new MessageMeta(attempt.get(),
+            var messageMeta = new MessageMeta(attempt,
                     internalMessage.getPublishedAt(),
                     internalMessage.getValidTill(),
                     internalMessage.getHeaders());
