@@ -67,14 +67,14 @@ class ActorTest {
     static Actor<TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tc) {
         return new Actor<>("Adder",
                 tc,
-                message -> true,
-                message -> {
+                (message, messageMeta) -> true,
+                (message, messageMeta) -> {
                     sum.addAndGet(message.getValue());
                     return true;
                 },
-                message -> {
+                (message, messageMeta) -> {
                 },
-                (message, throwable) -> {
+                (message, messageMeta, throwable) -> {
                 },
                 new NoRetryStrategy(new NoRetryConfig()),
                 partition,

@@ -9,11 +9,15 @@ import io.appform.memq.actor.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
+import io.appform.memq.actor.MessageMeta;
+import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
+import org.awaitility.Awaitility;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +27,8 @@ public class TestUtil {
 
     public enum HighLevelActorType {
         EXCEPTION_ACTOR,
+        BLOCKING_ACTOR,
+        ;
     }
 
     public static final String GLOBAL_EXECUTOR_SERVICE_GROUP = "global";
@@ -67,6 +73,33 @@ public class TestUtil {
         };
     }
 
+    public static HighLevelActor<HighLevelActorType, TestIntMessage> blockingActor(final AtomicInteger counter,
+                                                                                   final AtomicBoolean sideline,
+                                                                                   final AtomicBoolean blockConsume,
+                                                                                   final HighLevelActorConfig highLevelActorConfig,
+                                                                                   final ActorSystem actorSystem,
+                                                                                   final List<ActorObserver> observers) {
+        return new HighLevelActor<>(HighLevelActorType.BLOCKING_ACTOR,
+                highLevelActorConfig,
+                actorSystem,
+                observers
+        ) {
+            @Override
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
+                counter.addAndGet(message.getValue());
+                while(blockConsume.get()) {
+                    Awaitility.waitAtMost(Duration.ofMillis(100));
+                }
+                return true;
+            }
+
+            @Override
+            protected void sideline(TestIntMessage message, MessageMeta messageMeta) {
+                sideline.set(true);
+            }
+        };
+    }
+
     public static HighLevelActor<HighLevelActorType,TestIntMessage> allExceptionActor(final AtomicInteger counter,
                                      final AtomicBoolean sideline,
                                      final HighLevelActorConfig highLevelActorConfig,
@@ -78,13 +111,13 @@ public class TestUtil {
                 List.of()
         ) {
             @Override
-            protected boolean handle(TestIntMessage message) {
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 counter.addAndGet(message.getValue());
                 throw new RuntimeException();
             }
 
             @Override
-            protected void sideline(TestIntMessage message) {
+            protected void sideline(TestIntMessage message, MessageMeta messageMeta) {
                 sideline.set(true);
             }
         };
