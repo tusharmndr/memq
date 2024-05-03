@@ -4,7 +4,6 @@ import lombok.Value;
 
 import java.util.Map;
 
-//package private class
 
 @Value
 class InternalMessage<M extends Message> {
