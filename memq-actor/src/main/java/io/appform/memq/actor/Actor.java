@@ -184,7 +184,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                     return false;
                 }
                 val internalMessage = new InternalMessage<>(message.id(), message.validTill(),
-                        System.currentTimeMillis(), message);
+                        System.currentTimeMillis(), message.headers(), message);
                 messages.putIfAbsent(internalMessage.getId(), internalMessage);
                 checkCondition.signalAll();
             } finally {
@@ -269,7 +269,9 @@ public class Actor<M extends Message> implements AutoCloseable {
             var status = false;
             val attempt = new AtomicInteger(1);
             var messageMeta = new MessageMeta(attempt.get(),
-                    internalMessage.getPublishedAt(), internalMessage.getValidTill());
+                    internalMessage.getPublishedAt(),
+                    internalMessage.getValidTill(),
+                    internalMessage.getHeaders());
             try {
                 val valid = actor.rootObserver.execute(ActorObserverContext.builder()
                                 .message(message)
