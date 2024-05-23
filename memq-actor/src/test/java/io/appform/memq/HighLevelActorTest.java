@@ -5,6 +5,7 @@ import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.ActorOperation;
 import io.appform.memq.helper.message.TestIntMessage;
 import io.appform.memq.helper.TestUtil;
+import io.appform.memq.actor.MessageMeta;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -102,7 +103,7 @@ class HighLevelActorTest {
                 message -> Math.absExact(message.id().hashCode()) % partition
         ) {
             @Override
-            protected boolean handle(TestIntMessage message) {
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 sum.addAndGet(message.getValue());
                 return true;
             }
