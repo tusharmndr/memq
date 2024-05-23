@@ -10,6 +10,7 @@ import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -49,6 +50,7 @@ class MemqActorSystemTest {
                     .build();
             val memqActorSystem = new MemqActorSystem(memqConfig,
                     (name, parallel) -> Executors.newFixedThreadPool(Constants.DEFAULT_THREADPOOL),
+                    new ArrayList<>(),
                     metricRegistry);
             val highLevelActorConfig = HighLevelActorConfig.builder()
                     .partitions(SINGLE_PARTITION)
