@@ -62,6 +62,11 @@ public class TestUtil {
             }
 
             @Override
+            public List<ActorObserver> registeredObservers() {
+                return List.of();
+            }
+
+            @Override
             public boolean isRunning() {
                 return !registeredActors.isEmpty() && registeredActors.stream().allMatch(Actor::isRunning);
             }
