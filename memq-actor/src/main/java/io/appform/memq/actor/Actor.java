@@ -98,6 +98,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         return rootObserver.execute(ActorObserverContext.builder()
                                      .operation(ActorOperation.PUBLISH)
                                      .message(message)
+                                     .actorName(name)
                                      .build(),
                              () -> mailboxes.get(partitioner.applyAsInt(message))
                                      .publish(message));
@@ -237,6 +238,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                             actor.rootObserver.execute(ActorObserverContext.builder()
                                                                .message(message)
                                                                .operation(ActorOperation.CONSUME)
+                                                               .actorName(actor.name)
                                                                .build(),
                                                        () -> process(message));
                         }
@@ -265,6 +267,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                 val valid = actor.rootObserver.execute(ActorObserverContext.builder()
                                 .message(message)
                                 .operation(ActorOperation.VALIDATE)
+                                .actorName(actor.name)
                                 .build(),
                         () -> actor.validationHandler.apply(message));
                 if (!valid) {
@@ -278,6 +281,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                         actor.rootObserver.execute(ActorObserverContext.builder()
                                         .message(message)
                                         .operation(ActorOperation.SIDELINE)
+                                        .actorName(actor.name)
                                         .build(),
                                 () -> {
                                     actor.sidelineHandler.accept(message);
@@ -290,6 +294,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                 actor.rootObserver.execute(ActorObserverContext.builder()
                                 .message(message)
                                 .operation(ActorOperation.HANDLE_EXCEPTION)
+                                .actorName(actor.name)
                                 .build(),
                         () -> {
                             actor.exceptionHandler.accept(message, e);
