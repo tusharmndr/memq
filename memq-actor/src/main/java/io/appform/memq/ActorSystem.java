@@ -28,6 +28,8 @@ public interface ActorSystem extends AutoCloseable {
 
     MetricRegistry metricRegistry();
 
+    List<ActorObserver> registeredObservers();
+
     boolean isRunning();
 
     default List<ActorObserver> observers(String name, HighLevelActorConfig config, List<ActorObserver> observers) {
@@ -35,6 +37,12 @@ public interface ActorSystem extends AutoCloseable {
 
         if (observers != null) {
             updatedObservers.addAll(observers);
+        }
+
+        val registeredObservers = registeredObservers();
+
+        if(registeredObservers != null &&  !registeredObservers.isEmpty()) {
+            updatedObservers.addAll(registeredObservers);
         }
 
         if (!config.isMetricDisabled()) {
