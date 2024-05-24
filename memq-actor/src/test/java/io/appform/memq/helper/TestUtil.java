@@ -9,6 +9,7 @@ import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
+import io.appform.memq.actor.MessageMeta;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
@@ -26,7 +27,7 @@ public class TestUtil {
 
     public enum HighLevelActorType {
         EXCEPTION_ACTOR,
-        BLOCKING_ACTOR
+        BLOCKING_ACTOR,
         ;
     }
 
@@ -84,7 +85,7 @@ public class TestUtil {
                 observers
         ) {
             @Override
-            protected boolean handle(TestIntMessage message) {
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 counter.addAndGet(message.getValue());
                 while(blockConsume.get()) {
                     Awaitility.waitAtMost(Duration.ofMillis(100));
@@ -93,7 +94,7 @@ public class TestUtil {
             }
 
             @Override
-            protected void sideline(TestIntMessage message) {
+            protected void sideline(TestIntMessage message, MessageMeta messageMeta) {
                 sideline.set(true);
             }
         };
@@ -110,13 +111,13 @@ public class TestUtil {
                 List.of()
         ) {
             @Override
-            protected boolean handle(TestIntMessage message) {
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 counter.addAndGet(message.getValue());
                 throw new RuntimeException();
             }
 
             @Override
-            protected void sideline(TestIntMessage message) {
+            protected void sideline(TestIntMessage message, MessageMeta messageMeta) {
                 sideline.set(true);
             }
         };

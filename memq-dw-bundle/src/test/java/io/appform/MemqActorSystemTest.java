@@ -6,6 +6,7 @@ import io.appform.config.MemqConfig;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.HighLevelActorConfig;
 import io.appform.memq.actor.Message;
+import io.appform.memq.actor.MessageMeta;
 import io.appform.memq.retry.config.NoRetryConfig;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,7 @@ class MemqActorSystemTest {
                     .build();
             val highLevelActor = new HighLevelActor<>(ActorType.TEST_HIGH_LEVEL_ACTOR, highLevelActorConfig, memqActorSystem) {
                 @Override
-                protected boolean handle(Message message) {
+                protected boolean handle(Message message, MessageMeta messageMeta) {
                     return true;
                 }
             };
