@@ -6,18 +6,17 @@ import io.appform.memq.actor.Message;
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
+import io.appform.memq.actor.MessageMeta;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.stats.ActorMetricObserver;
+import io.appform.memq.utils.TriConsumer;
 import lombok.val;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 
 public interface ActorSystem extends AutoCloseable {
 
@@ -29,6 +28,8 @@ public interface ActorSystem extends AutoCloseable {
 
     MetricRegistry metricRegistry();
 
+    List<ActorObserver> registeredObservers();
+
     boolean isRunning();
 
     default List<ActorObserver> observers(String name, HighLevelActorConfig config, List<ActorObserver> observers) {
@@ -38,6 +39,12 @@ public interface ActorSystem extends AutoCloseable {
             updatedObservers.addAll(observers);
         }
 
+        val registeredObservers = registeredObservers();
+
+        if(registeredObservers != null &&  !registeredObservers.isEmpty()) {
+            updatedObservers.addAll(registeredObservers);
+        }
+
         if (!config.isMetricDisabled()) {
             updatedObservers.add(new ActorMetricObserver(name, metricRegistry()));
         }
@@ -45,24 +52,24 @@ public interface ActorSystem extends AutoCloseable {
         return updatedObservers;
     }
 
-    default <M extends Message> Function<M, Boolean> expiryValidator(HighLevelActorConfig highLevelActorConfig) {
-        return message -> message.validTill() > System.currentTimeMillis();
+    default <M extends Message> BiFunction<M, MessageMeta, Boolean> expiryValidator(HighLevelActorConfig highLevelActorConfig) {
+        return (message, messageMeta) -> messageMeta.getValidTill() > System.currentTimeMillis();
     }
 
-    default <M extends Message> BiConsumer<M, Throwable> createExceptionHandler(
+    default <M extends Message> TriConsumer<M, MessageMeta, Throwable> createExceptionHandler(
             HighLevelActorConfig highLevelActorConfig,
-            Consumer<M> sidelineHandler) {
+            BiConsumer<M, MessageMeta> sidelineHandler) {
         val exceptionHandlerConfig = highLevelActorConfig.getExceptionHandlerConfig();
         return exceptionHandlerConfig.accept(new ExceptionHandlerConfigVisitor<>() {
             @Override
-            public BiConsumer<M, Throwable> visit(DropConfig config) {
-                return (message, throwable) -> {
+            public TriConsumer<M, MessageMeta, Throwable> visit(DropConfig config) {
+                return (message, messageMeta, throwable) -> {
                 };
             }
 
             @Override
-            public BiConsumer<M, Throwable> visit(SidelineConfig config) {
-                return (message, throwable) -> sidelineHandler.accept(message);
+            public TriConsumer<M, MessageMeta, Throwable> visit(SidelineConfig config) {
+                return (message, messageMeta,  throwable) -> sidelineHandler.accept(message, messageMeta);
             }
         });
     }

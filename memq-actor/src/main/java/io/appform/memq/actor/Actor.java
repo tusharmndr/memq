@@ -3,8 +3,10 @@ package io.appform.memq.actor;
 import com.google.common.collect.Sets;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
+import io.appform.memq.observer.ObserverMessageMeta;
 import io.appform.memq.observer.TerminalActorObserver;
 import io.appform.memq.retry.RetryStrategy;
+import io.appform.memq.utils.TriConsumer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -15,10 +17,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -32,10 +35,10 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final ExecutorService messageDispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
     private final Map<Integer, Mailbox<M>> mailboxes;
-    private final Function<M, Boolean> validationHandler;
-    private final Function<M, Boolean> consumerHandler;
-    private final Consumer<M> sidelineHandler;
-    private final BiConsumer<M, Throwable> exceptionHandler;
+    private final BiFunction<M, MessageMeta, Boolean> validationHandler;
+    private final BiFunction<M, MessageMeta, Boolean> consumerHandler;
+    private final BiConsumer<M, MessageMeta> sidelineHandler;
+    private final TriConsumer<M, MessageMeta, Throwable> exceptionHandler;
     private final RetryStrategy retryer;
     private ActorObserver rootObserver;
 
@@ -44,10 +47,10 @@ public class Actor<M extends Message> implements AutoCloseable {
     public Actor(
             String name,
             ExecutorService executorService,
-            Function<M, Boolean> validationHandler,
-            Function<M, Boolean> consumerHandler,
-            Consumer<M> sidelineHandler,
-            BiConsumer<M, Throwable> exceptionHandler,
+            BiFunction<M, MessageMeta, Boolean> validationHandler,
+            BiFunction<M, MessageMeta, Boolean> consumerHandler,
+            BiConsumer<M, MessageMeta> sidelineHandler,
+            TriConsumer<M, MessageMeta, Throwable> exceptionHandler,
             RetryStrategy retryer,
             int partitions,
             long maxSizePerPartition,
@@ -137,7 +140,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final long maxSize;
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition checkCondition = lock.newCondition();
-        private final Map<String, M> messages = new HashMap<>();
+        private final Map<String, InternalMessage<M>> messages = new HashMap<>();
         private final Set<String> inFlight = new HashSet<>();
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
@@ -184,8 +187,9 @@ public class Actor<M extends Message> implements AutoCloseable {
                             currSize, this.maxSize);
                     return false;
                 }
-                val messageId = message.id();
-                messages.putIfAbsent(messageId, message);
+                val internalMessage = new InternalMessage<>(message.id(), message.validTill(),
+                        System.currentTimeMillis(), message.headers(), message);
+                messages.putIfAbsent(internalMessage.getId(), internalMessage);
                 checkCondition.signalAll();
             } finally {
                 lock.unlock();
@@ -233,20 +237,24 @@ public class Actor<M extends Message> implements AutoCloseable {
                     val messagesToBeDelivered = newMessageIds.stream()
                                     .map(messages::get)
                                             .toList();
-                    messagesToBeDelivered.forEach(message -> actor.executorService.submit(() -> {
+                    messagesToBeDelivered.forEach(internalMessage -> actor.executorService.submit(() -> {
+                        val id = internalMessage.getId();
                         try {
+                            val observerMessageMeta = new ObserverMessageMeta(id, internalMessage.getPublishedAt(),
+                                    internalMessage.getValidTill());
                             actor.rootObserver.execute(ActorObserverContext.builder()
-                                                               .message(message)
-                                                               .operation(ActorOperation.CONSUME)
-                                                               .actorName(actor.name)
-                                                               .build(),
-                                                       () -> process(message));
+                                            .messageMeta(observerMessageMeta)
+                                            .message(internalMessage.getMessage())
+                                            .operation(ActorOperation.CONSUME)
+                                            .actorName(actor.name)
+                                            .build(),
+                                    () -> process(internalMessage));
                         }
                         catch (Throwable throwable) {
-                            log.error("Error processing message", throwable);
+                            log.error("Error processing internalMessage", throwable);
                         }
                         finally {
-                            releaseMessage(message.id());
+                            releaseMessage(id);
                         }
                     }));
                 }
@@ -260,22 +268,31 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
         }
 
-        private boolean process(final M message) {
-            val id = message.id();
+        private boolean process(final InternalMessage<M> internalMessage) {
+            val id = internalMessage.getId();
+            val message = internalMessage.getMessage();
             var status = false;
+            val attempt = new AtomicInteger(1);
+            var messageMeta = new MessageMeta(attempt,
+                    internalMessage.getPublishedAt(),
+                    internalMessage.getValidTill(),
+                    internalMessage.getHeaders());
             try {
                 val valid = actor.rootObserver.execute(ActorObserverContext.builder()
                                 .message(message)
                                 .operation(ActorOperation.VALIDATE)
                                 .actorName(actor.name)
                                 .build(),
-                        () -> actor.validationHandler.apply(message));
+                        () -> actor.validationHandler.apply(message, messageMeta));
                 if (!valid) {
                     log.debug("Message validation failed for message: {}", message);
                     return false;
                 }
                 else {
-                    status = actor.retryer.execute(() -> actor.consumerHandler.apply(message));
+                    status = actor.retryer.execute(() -> {
+                        messageMeta.updateAttempt(attempt.getAndIncrement());
+                        return actor.consumerHandler.apply(message, messageMeta);
+                    });
                     if (!status) {
                         log.debug("Consumer failed for message: {}", message);
                         actor.rootObserver.execute(ActorObserverContext.builder()
@@ -284,7 +301,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                                         .actorName(actor.name)
                                         .build(),
                                 () -> {
-                                    actor.sidelineHandler.accept(message);
+                                    actor.sidelineHandler.accept(message, messageMeta);
                                     return true;
                                 });
                     }
@@ -297,7 +314,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                                 .actorName(actor.name)
                                 .build(),
                         () -> {
-                            actor.exceptionHandler.accept(message, e);
+                            actor.exceptionHandler.accept(message, messageMeta, e);
                             return true;
                         });
             }

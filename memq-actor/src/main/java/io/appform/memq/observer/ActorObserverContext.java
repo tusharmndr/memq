@@ -10,5 +10,6 @@ import lombok.Value;
 public class ActorObserverContext<M extends Message> {
     ActorOperation operation;
     M message;
+    ObserverMessageMeta messageMeta;
     String actorName;
 }

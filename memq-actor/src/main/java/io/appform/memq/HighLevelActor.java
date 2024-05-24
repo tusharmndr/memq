@@ -3,6 +3,7 @@ package io.appform.memq;
 
 import io.appform.memq.actor.Actor;
 import io.appform.memq.actor.Message;
+import io.appform.memq.actor.MessageMeta;
 import io.appform.memq.observer.ActorObserver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -62,9 +63,9 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         actorSystem.register(actor);
     }
 
-    protected abstract boolean handle(final M message);
+    protected abstract boolean handle(final M message, MessageMeta messageMeta);
 
-    protected void sideline(final M message) {
+    protected void sideline(final M message, MessageMeta messageMeta) {
         log.warn("skipping sideline for actor:{} message:{}", type.name(), message);
     }
 

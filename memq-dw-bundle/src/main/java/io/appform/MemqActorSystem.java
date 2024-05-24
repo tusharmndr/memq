@@ -6,6 +6,7 @@ import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.HighLevelActorConfig;
+import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.dropwizard.lifecycle.Managed;
@@ -30,20 +31,23 @@ public class MemqActorSystem implements ActorSystem, Managed {
     private final List<Actor<?>> registeredActors;
     private final RetryStrategyFactory retryStrategyFactory;
     private final MetricRegistry metricRegistry;
+    private final List<ActorObserver> actorObservers;
 
     public MemqActorSystem(MemqConfig memqConfig) {
-        this(memqConfig, (name, parallel) -> Executors.newFixedThreadPool(parallel), new MetricRegistry());
+        this(memqConfig, (name, parallel) -> Executors.newFixedThreadPool(parallel), new ArrayList<>(), new MetricRegistry());
     }
 
     public MemqActorSystem(
             MemqConfig memqConfig,
             ExecutorServiceProvider executorServiceProvider,
+            List<ActorObserver> actorObservers,
             MetricRegistry metricRegistry) {
         this.executorServiceProvider = executorServiceProvider;
         this.executorConfigMap = memqConfig.getExecutors().stream()
                 .collect(Collectors.toMap(ExecutorConfig::getName, Function.identity()));
         this.executors = new ConcurrentHashMap<>();
         this.registeredActors = new ArrayList<>();
+        this.actorObservers = actorObservers;
         this.retryStrategyFactory = new RetryStrategyFactory();
         this.metricRegistry = metricRegistry;
     }
@@ -76,6 +80,11 @@ public class MemqActorSystem implements ActorSystem, Managed {
     @Override
     public MetricRegistry metricRegistry() {
         return metricRegistry;
+    }
+
+    @Override
+    public List<ActorObserver> registeredObservers() {
+        return List.copyOf(this.actorObservers);
     }
 
     @Override
