@@ -25,7 +25,8 @@ class MetricObserverActorTest {
     @Test
     @SneakyThrows
     void testMetrics(ActorSystem actorSystem) {
-        val metricPrefix = "actor." + TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name() + ".";
+        val actorName = TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name();
+        val metricPrefix = "actor." + actorName + ".";
         val totalPostfix = ".total";
         val successPostfix = ".success";
         val failedPostfix = ".failed";
@@ -53,6 +54,7 @@ class MetricObserverActorTest {
         assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + totalPostfix)).getCount());
         assertEquals(0, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + successPostfix)).getCount());
         assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.CONSUME.name() + failedPostfix)).getCount());
+        assertEquals(actorName, actor.getType().name());
     }
 
     @Test
@@ -60,6 +62,7 @@ class MetricObserverActorTest {
     void testNoMetrics(ActorSystem actorSystem) {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
+        val actorName = TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name();
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, true);
         val actor = TestUtil.allExceptionActor(counter, sideline,
                 actorConfig, actorSystem);
@@ -67,5 +70,6 @@ class MetricObserverActorTest {
 
         val metrics = actorSystem.metricRegistry().getMetrics();
         assertEquals(0, metrics.size());
+        assertEquals(actorName, actor.getType().name());
     }
 }
