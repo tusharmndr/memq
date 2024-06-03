@@ -49,6 +49,14 @@ public class ActorMetricObserver extends ActorObserver {
                                                   return actor.size();
                                               }
                                           });
+        this.metricRegistry.gauge(MetricRegistry.name(getMetricPrefix(actorName), "in_flight"),
+                (MetricRegistry.MetricSupplier<Gauge<Long>>) () ->
+                        new CachedGauge<>(5, TimeUnit.SECONDS) {
+                            @Override
+                            protected Long loadValue() {
+                                return actor.inFlight();
+                            }
+                        });
     }
 
     @Override
