@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -26,7 +26,7 @@ public class ActorConcurrencyTest {
 
     @Test
     public void testMaxConcurrency(ActorSystem actorSystem) {
-        val concurrency = new Random().nextInt(1,5);
+        val concurrency = ThreadLocalRandom.current().nextInt(1, 5);
         val metricPrefix = "actor." + TestUtil.HighLevelActorType.BLOCKING_ACTOR.name() + ".";
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
