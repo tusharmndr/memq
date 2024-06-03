@@ -58,6 +58,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 actorSystem.createRetryer(highLevelActorConfig),
                 highLevelActorConfig.getPartitions(),
                 highLevelActorConfig.getMaxSizePerPartition(),
+                highLevelActorConfig.getMaxConcurrencyPerPartition(),
                 actorSystem.partitioner(highLevelActorConfig, partitioner),
                 actorSystem.observers(type.name(), highLevelActorConfig, observers));
         actorSystem.register(actor);
@@ -75,6 +76,10 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
 
     public final long size() {
         return actor.size();
+    }
+
+    public final long inFlight() {
+        return actor.inFlight();
     }
 
     public final boolean isEmpty() {

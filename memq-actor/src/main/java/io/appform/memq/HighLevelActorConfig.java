@@ -28,6 +28,10 @@ public class HighLevelActorConfig {
     @Builder.Default
     long maxSizePerPartition = Long.MAX_VALUE;
 
+    @Min(1)
+    @Builder.Default
+    long maxConcurrencyPerPartition = Long.MAX_VALUE;
+
     @Valid
     @NotNull
     @Builder.Default

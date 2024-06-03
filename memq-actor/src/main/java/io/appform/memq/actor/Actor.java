@@ -54,6 +54,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             RetryStrategy retryer,
             int partitions,
             long maxSizePerPartition,
+            long maxConcurrencyPerPartition,
             ToIntFunction<M> partitioner,
             List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
@@ -74,7 +75,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.partitioner = partitioner;
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
-                .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, maxSizePerPartition)));
+                .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, maxSizePerPartition, maxConcurrencyPerPartition)));
         this.rootObserver = setupObserver(observers);
     }
 
@@ -88,6 +89,13 @@ public class Actor<M extends Message> implements AutoCloseable {
         return mailboxes.values()
                 .stream()
                 .mapToLong(Mailbox::size)
+                .sum();
+    }
+
+    public final long inFlight() {
+        return mailboxes.values()
+                .stream()
+                .mapToLong(Mailbox::inFlight)
                 .sum();
     }
 
@@ -138,16 +146,18 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final Actor<M> actor;
         private final String name;
         private final long maxSize;
+        private final long maxConcurrency;
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition checkCondition = lock.newCondition();
-        private final Map<String, InternalMessage<M>> messages = new HashMap<>();
-        private final Set<String> inFlight = new HashSet<>();
+        private final Map<String, InternalMessage<M>> messages = new LinkedHashMap<>();
+        private final Set<String> inFlight = new LinkedHashSet<>();
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
 
-        public Mailbox(Actor<M> actor, int partition, long maxSize) {
+        public Mailbox(Actor<M> actor, int partition, long maxSize, long maxConcurrency) {
             this.actor = actor;
             this.maxSize = maxSize;
+            this.maxConcurrency = maxConcurrency;
             this.name = actor.name + "-" + partition;
         }
 
@@ -165,6 +175,16 @@ public class Actor<M extends Message> implements AutoCloseable {
             lock.lock();
             try {
                 return messages.size();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+
+        public final long inFlight() {
+            lock.lock();
+            try {
+                return inFlight.size();
             } finally {
                 lock.unlock();
             }
@@ -228,9 +248,19 @@ public class Actor<M extends Message> implements AutoCloseable {
                         return;
                     }
                     //Find new messages
-                    val newMessageIds = Set.copyOf(Sets.difference(messages.keySet(), inFlight));
+                    val newOrderedMessages = new LinkedHashSet<String>();
+                    messages.keySet().stream()
+                            .limit(this.maxConcurrency)
+                            .forEachOrdered(newOrderedMessages::add);
+                    val newMessageIds = Set.copyOf(Sets.difference(newOrderedMessages, inFlight));
                     if (newMessageIds.isEmpty()) {
-                        log.debug("No new messages. Neither is actor stopped. Ignoring spurious wakeup.");
+                        if(inFlight.size() == this.maxConcurrency) {
+                            log.warn("Reached max concurrency:{}. Ignoring consumption till inflight messages are consumed",
+                                    this.maxConcurrency);
+                        }
+                        else {
+                            log.debug("No new messages. Neither is actor stopped. Ignoring spurious wakeup.");
+                        }
                         continue;
                     }
                     inFlight.addAll(newMessageIds);
