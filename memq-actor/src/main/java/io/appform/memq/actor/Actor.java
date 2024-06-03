@@ -150,7 +150,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition checkCondition = lock.newCondition();
         private final Map<String, InternalMessage<M>> messages = new LinkedHashMap<>();
-        private final Set<String> inFlight = new LinkedHashSet<>();
+        private final Set<String> inFlight = new HashSet<>();
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
 
@@ -248,11 +248,10 @@ public class Actor<M extends Message> implements AutoCloseable {
                         return;
                     }
                     //Find new messages
-                    val newOrderedMessages = new LinkedHashSet<String>();
-                    messages.keySet().stream()
+                    val newInOrderedMessages = messages.keySet().stream()
                             .limit(this.maxConcurrency)
-                            .forEachOrdered(newOrderedMessages::add);
-                    val newMessageIds = Set.copyOf(Sets.difference(newOrderedMessages, inFlight));
+                            .collect(Collectors.toSet());
+                    val newMessageIds = Set.copyOf(Sets.difference(newInOrderedMessages, inFlight));
                     if (newMessageIds.isEmpty()) {
                         if(inFlight.size() == this.maxConcurrency) {
                             log.warn("Reached max concurrency:{}. Ignoring consumption till inflight messages are consumed",
