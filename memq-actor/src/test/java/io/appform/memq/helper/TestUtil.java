@@ -143,19 +143,19 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
-        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE, Long.MAX_VALUE);
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           long maxSizePerPartition) {
-        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, Long.MAX_VALUE);
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, Integer.MAX_VALUE);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           long maxSizePerPartition,
-                                                          long maxConcurrencyPerPartition) {
+                                                          int maxConcurrencyPerPartition) {
         return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, maxConcurrencyPerPartition);
     }
 
@@ -163,7 +163,7 @@ public class TestUtil {
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig,
                                                           long maxSizePerPartition,
-                                                          long maxConcurrencyPerPartition) {
+                                                          int maxConcurrencyPerPartition) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
                 .maxSizePerPartition(maxSizePerPartition)
