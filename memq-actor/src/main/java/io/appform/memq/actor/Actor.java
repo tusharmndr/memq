@@ -54,7 +54,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             RetryStrategy retryer,
             int partitions,
             long maxSizePerPartition,
-            long maxConcurrencyPerPartition,
+            int maxConcurrencyPerPartition,
             ToIntFunction<M> partitioner,
             List<ActorObserver> observers) {
         Objects.requireNonNull(name, "Name cannot be null");
@@ -146,7 +146,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final Actor<M> actor;
         private final String name;
         private final long maxSize;
-        private final long maxConcurrency;
+        private final int maxConcurrency;
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition checkCondition = lock.newCondition();
         private final Map<String, InternalMessage<M>> messages = new LinkedHashMap<>();
@@ -154,7 +154,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final AtomicBoolean stopped = new AtomicBoolean();
         private Future<?> monitorFuture;
 
-        public Mailbox(Actor<M> actor, int partition, long maxSize, long maxConcurrency) {
+        public Mailbox(Actor<M> actor, int partition, long maxSize, int maxConcurrency) {
             this.actor = actor;
             this.maxSize = maxSize;
             this.maxConcurrency = maxConcurrency;
@@ -181,7 +181,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
 
-        public final long inFlight() {
+        public final int inFlight() {
             lock.lock();
             try {
                 return inFlight.size();
