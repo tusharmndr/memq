@@ -143,25 +143,34 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
-        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE);
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           long maxSizePerPartition) {
-        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition);
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, Integer.MAX_VALUE);
+    }
+
+    public static HighLevelActorConfig noRetryActorConfig(int partition,
+                                                          boolean metricDisabled,
+                                                          long maxSizePerPartition,
+                                                          int maxConcurrencyPerPartition) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, maxConcurrencyPerPartition);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig,
-                                                          long maxSizePerPartition) {
+                                                          long maxSizePerPartition,
+                                                          int maxConcurrencyPerPartition) {
         return HighLevelActorConfig.builder()
                 .partitions(partition)
                 .maxSizePerPartition(maxSizePerPartition)
                 .retryConfig(new NoRetryConfig())
                 .executorName(GLOBAL_EXECUTOR_SERVICE_GROUP)
                 .metricDisabled(metricDisabled)
+                .maxConcurrencyPerPartition(maxConcurrencyPerPartition)
                 .exceptionHandlerConfig(exceptionHandlerConfig)
                 .build();
     }
