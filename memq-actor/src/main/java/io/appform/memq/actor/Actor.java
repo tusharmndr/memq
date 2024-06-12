@@ -248,7 +248,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                         return;
                     }
                     //Find new messages
-                    val newInOrderedMessages = messages.keySet().stream()
+                    val newInOrderedMessages = messages.keySet()
+                            .stream()
                             .limit(this.maxConcurrency)
                             .collect(Collectors.toSet());
                     val newMessageIds = Set.copyOf(Sets.difference(newInOrderedMessages, inFlight));
