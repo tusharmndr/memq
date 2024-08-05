@@ -89,3 +89,4 @@ out.*
 *.svg
 */creds.sh
 .run
+build*
