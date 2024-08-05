@@ -3,9 +3,9 @@ package io.appform.memq;
 import com.codahale.metrics.Meter;
 import com.google.common.base.Stopwatch;
 import io.appform.memq.actor.ActorOperation;
-import io.appform.memq.helper.message.TestIntMessage;
-import io.appform.memq.helper.TestUtil;
 import io.appform.memq.actor.MessageMeta;
+import io.appform.memq.helper.TestUtil;
+import io.appform.memq.helper.message.TestIntMessage;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -20,7 +20,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @ExtendWith(MemQTestExtension.class)
@@ -94,6 +97,22 @@ class HighLevelActorTest {
         } finally {
             tp.shutdownNow();
         }
+    }
+
+    @Test
+    void testPurge(ActorSystem actorSystem) {
+        val counter = new AtomicInteger();
+        val sideline = new AtomicBoolean();
+        val blockConsume = new AtomicBoolean(true);
+        val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false,
+                1L);
+        val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
+                actorConfig, actorSystem, List.of());
+        val publish = actor.publish(new TestIntMessage(1));
+        assertTrue(publish);
+        assertEquals(1, actor.size());
+        assertDoesNotThrow(actor::purge);
+        assertTrue(actor.isEmpty());
     }
 
     HighLevelActor<HighLevelActorType, TestIntMessage> adder(final AtomicInteger sum, int partition, ActorSystem actorSystem) {

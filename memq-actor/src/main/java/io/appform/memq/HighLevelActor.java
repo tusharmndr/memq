@@ -70,6 +70,10 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
         log.warn("skipping sideline for actor:{} message:{}", type.name(), message);
     }
 
+    public final void purge() {
+        actor.purge();
+    }
+
     public final boolean publish(final M message) {
         return actor.publish(message);
     }
