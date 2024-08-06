@@ -202,7 +202,6 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final void purge() {
             lock.lock();
             try {
-                inFlight.clear();
                 messages.clear();
             } finally {
                 lock.unlock();
