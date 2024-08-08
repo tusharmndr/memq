@@ -11,7 +11,12 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -40,7 +45,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final BiConsumer<M, MessageMeta> sidelineHandler;
     private final TriConsumer<M, MessageMeta, Throwable> exceptionHandler;
     private final RetryStrategy retryer;
-    private ActorObserver rootObserver;
+    private final ActorObserver rootObserver;
 
 
     @SneakyThrows
@@ -103,6 +108,10 @@ public class Actor<M extends Message> implements AutoCloseable {
         return mailboxes.values()
                 .stream()
                 .allMatch(Mailbox::isRunning);
+    }
+
+    public final void purge() {
+        mailboxes.values().forEach(Mailbox::purge);
     }
 
     public final boolean publish(final M message) {
@@ -185,6 +194,15 @@ public class Actor<M extends Message> implements AutoCloseable {
             lock.lock();
             try {
                 return inFlight.size();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        public final void purge() {
+            lock.lock();
+            try {
+                messages.clear();
             } finally {
                 lock.unlock();
             }
