@@ -7,7 +7,7 @@
     <groupId>io.appform.memq</groupId>
     <artifactId>memq</artifactId>
     <packaging>pom</packaging>
-    <version>0.1.3-SNAPSHOT</version>
+    <version>0.1.4-SNAPSHOT</version>
     <name>Mem Q Actors</name>
     <url>https://github.com/appform-io/memq</url>
     <description>In memory partitioned actor system</description>
