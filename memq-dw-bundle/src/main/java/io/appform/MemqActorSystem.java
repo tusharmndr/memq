@@ -23,7 +23,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class MemqActorSystem implements ActorSystem, Managed {
+public class  MemqActorSystem implements ActorSystem, Managed {
 
     private final ConcurrentHashMap<String, ExecutorService> executors;
     private final ExecutorServiceProvider executorServiceProvider;
