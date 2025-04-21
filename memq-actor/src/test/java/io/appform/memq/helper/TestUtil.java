@@ -128,10 +128,11 @@ public class TestUtil {
         };
     }
 
-    public static HighLevelActor<HighLevelActorType,TestIntMessage> successAfterNumberOfRetriesActor(final AtomicInteger attemptCounter,
+    public static HighLevelActor<HighLevelActorType,TestIntMessage> successAfterNumberOfExceptionsActor(final AtomicInteger attemptCounter,
                                                                                       final AtomicBoolean sideline,
                                                                                       final HighLevelActorConfig highLevelActorConfig,
-                                                                                      final ActorSystem actorSystem) {
+                                                                                      final ActorSystem actorSystem,
+                                                                                                        final int numberOfExceptions) {
         return new HighLevelActor<>(HighLevelActorType.EXCEPTION_ACTOR,
                 highLevelActorConfig,
                 actorSystem,
@@ -140,7 +141,7 @@ public class TestUtil {
         ) {
             @Override
             protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
-                if(messageMeta.getDeliveryAttempt().get() < 3) {
+                if(messageMeta.getDeliveryAttempt().get() < numberOfExceptions) {
                     throw new RuntimeException();
                 }
                 attemptCounter.addAndGet(messageMeta.getDeliveryAttempt().get());

@@ -24,6 +24,7 @@ class RetryActorTest {
 
     static int MAX_RETRY_COUNT = 6;
     static int MAX_RETRY_TIME = 3_000;
+    static int MAX_NUMBER_OF_EXCEPTIONS = 2;
 
     @Test
     void testCountLimitedExponentialWaitRetry() {
@@ -95,7 +96,13 @@ class RetryActorTest {
 
     @Test
     void testAttemptCountAfterRetriesForLimitedExponentialWaitRetry(){
-
+        val counter = triggerMessageToSuccessAfterNumberOfExceptionsActor(CountLimitedExponentialWaitRetryConfig.builder()
+                .maxAttempts(MAX_RETRY_COUNT)
+                .waitTimeInMillis(100)
+                .maxWaitTimeInMillis(500)
+                .multipier(1.1)
+                .build());
+        assertEquals(MAX_NUMBER_OF_EXCEPTIONS, counter.get());
     }
 
     @SneakyThrows
@@ -104,13 +111,7 @@ class RetryActorTest {
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
         try (val actorSystem = TestUtil.actorSystem(tc)) {
-            val highLevelActorConfig = HighLevelActorConfig.builder()
-                    .partitions(Constants.SINGLE_PARTITION)
-                    .maxSizePerPartition(Long.MAX_VALUE)
-                    .executorName(TestUtil.GLOBAL_EXECUTOR_SERVICE_GROUP)
-                    .retryConfig(retryConfig)
-                    .exceptionHandlerConfig(new SidelineConfig())
-                    .build();
+            val highLevelActorConfig = getHighLevelActorConfig(retryConfig);
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     highLevelActorConfig, actorSystem);
             actor.publish(new TestIntMessage(1));
@@ -120,6 +121,34 @@ class RetryActorTest {
                     .until(actor::isEmpty);
             return counter;
         }
+    }
+
+    @SneakyThrows
+    AtomicInteger triggerMessageToSuccessAfterNumberOfExceptionsActor(RetryConfig retryConfig) {
+        val counter = new AtomicInteger();
+        val sideline = new AtomicBoolean();
+        val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
+        try (val actorSystem = TestUtil.actorSystem(tc)) {
+            val highLevelActorConfig = getHighLevelActorConfig(retryConfig);
+            val actor = TestUtil.successAfterNumberOfExceptionsActor(counter, sideline,
+                    highLevelActorConfig, actorSystem, MAX_NUMBER_OF_EXCEPTIONS);
+            actor.publish(new TestIntMessage(1));
+            Awaitility.await()
+                    .timeout(Duration.ofMinutes(1))
+                    .catchUncaughtExceptions()
+                    .until(actor::isEmpty);
+            return counter;
+        }
+    }
+
+    private HighLevelActorConfig getHighLevelActorConfig(RetryConfig retryConfig) {
+        return HighLevelActorConfig.builder()
+                .partitions(Constants.SINGLE_PARTITION)
+                .maxSizePerPartition(Long.MAX_VALUE)
+                .executorName(TestUtil.GLOBAL_EXECUTOR_SERVICE_GROUP)
+                .retryConfig(retryConfig)
+                .exceptionHandlerConfig(new SidelineConfig())
+                .build();
     }
 
 }
