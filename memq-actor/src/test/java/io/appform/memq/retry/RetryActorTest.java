@@ -93,6 +93,11 @@ class RetryActorTest {
         assertTrue(elapsedTime > MAX_RETRY_TIME);
     }
 
+    @Test
+    void testAttemptCountAfterRetriesForLimitedExponentialWaitRetry(){
+
+    }
+
     @SneakyThrows
     AtomicInteger triggerMessageToExceptionActor(RetryConfig retryConfig) {
         val counter = new AtomicInteger();

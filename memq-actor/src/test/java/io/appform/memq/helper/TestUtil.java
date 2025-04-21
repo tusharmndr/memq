@@ -128,6 +128,34 @@ public class TestUtil {
         };
     }
 
+    public static HighLevelActor<HighLevelActorType,TestIntMessage> successAfterNumberOfRetriesActor(final AtomicInteger attemptCounter,
+                                                                                      final AtomicBoolean sideline,
+                                                                                      final HighLevelActorConfig highLevelActorConfig,
+                                                                                      final ActorSystem actorSystem) {
+        return new HighLevelActor<>(HighLevelActorType.EXCEPTION_ACTOR,
+                highLevelActorConfig,
+                actorSystem,
+                null,
+                List.of()
+        ) {
+            @Override
+            protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
+                if(messageMeta.getDeliveryAttempt().get() < 3) {
+                    throw new RuntimeException();
+                }
+                attemptCounter.addAndGet(messageMeta.getDeliveryAttempt().get());
+                return true;
+            }
+
+            @Override
+            protected void sideline(TestIntMessage message, MessageMeta messageMeta) {
+                sideline.set(true);
+            }
+        };
+    }
+
+
+
     public static HighLevelActorConfig noRetryActorConfig(int partition, ExceptionHandlerConfig exceptionHandlerConfig) {
         return noRetryActorConfig(partition, false, exceptionHandlerConfig);
     }
