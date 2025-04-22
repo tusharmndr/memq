@@ -320,8 +320,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             val id = internalMessage.getId();
             val message = internalMessage.getMessage();
             var status = false;
-            var messageMeta = new MessageMeta(new AtomicInteger(0),
-                    internalMessage.getPublishedAt(),
+            var messageMeta = new MessageMeta(internalMessage.getPublishedAt(),
                     internalMessage.getValidTill(),
                     internalMessage.getHeaders());
             try {

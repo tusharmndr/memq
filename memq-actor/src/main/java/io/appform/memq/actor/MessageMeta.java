@@ -16,6 +16,13 @@ public class MessageMeta {
     private final long validTill;
     private final Map<String, Object> headers;
 
+    public MessageMeta(long publishedAt, long validTill, Map<String, Object> headers) {
+        this.deliveryAttempt = new AtomicInteger(0);
+        this.publishedAt = publishedAt;
+        this.validTill = validTill;
+        this.headers = headers;
+    }
+
     public boolean isRedelivered() {
         return deliveryAttempt.get() > 1;
     }
