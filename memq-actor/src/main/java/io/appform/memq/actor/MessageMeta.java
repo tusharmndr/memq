@@ -21,8 +21,8 @@ public class MessageMeta {
     }
 
     //Private package function
-    void updateAttempt(int deliveryAttempt) {
-        this.deliveryAttempt.set(deliveryAttempt);
+    void incrementAttempt() {
+        this.deliveryAttempt.incrementAndGet();
     }
 
 

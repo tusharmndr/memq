@@ -320,8 +320,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             val id = internalMessage.getId();
             val message = internalMessage.getMessage();
             var status = false;
-            val attempt = new AtomicInteger(0);
-            var messageMeta = new MessageMeta(attempt,
+            var messageMeta = new MessageMeta(new AtomicInteger(0),
                     internalMessage.getPublishedAt(),
                     internalMessage.getValidTill(),
                     internalMessage.getHeaders());
@@ -338,7 +337,7 @@ public class Actor<M extends Message> implements AutoCloseable {
                 }
                 else {
                     status = actor.retryer.execute(() -> {
-                        messageMeta.updateAttempt(messageMeta.getDeliveryAttempt().incrementAndGet());
+                        messageMeta.incrementAttempt();
                         return actor.consumerHandler.apply(message, messageMeta);
                     });
                     if (!status) {
