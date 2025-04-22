@@ -13,6 +13,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -98,8 +99,8 @@ class RetryActorTest {
     void testAttemptCountAfterRetriesForLimitedExponentialWaitRetry(){
         val counter = triggerMessageToSuccessAfterNumberOfExceptionsActor(CountLimitedExponentialWaitRetryConfig.builder()
                 .maxAttempts(MAX_RETRY_COUNT)
-                .waitTimeInMillis(100)
-                .maxWaitTimeInMillis(500)
+                .waitTimeInMillis(1)
+                .maxWaitTimeInMillis(5)
                 .multipier(1.1)
                 .build());
         assertEquals(MAX_NUMBER_OF_EXCEPTIONS, counter.get());
@@ -134,7 +135,8 @@ class RetryActorTest {
                     highLevelActorConfig, actorSystem, MAX_NUMBER_OF_EXCEPTIONS);
             actor.publish(new TestIntMessage(1));
             Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
+                    .pollDelay(Duration.ofMillis(5))
+                    .timeout(Duration.ofMillis(10))
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty);
             return counter;
