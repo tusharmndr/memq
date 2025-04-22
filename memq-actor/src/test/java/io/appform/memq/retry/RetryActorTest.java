@@ -106,6 +106,16 @@ class RetryActorTest {
         assertEquals(MAX_NUMBER_OF_EXCEPTIONS, counter.get());
     }
 
+    @Test
+    void testAttemptCountAfterRetriesForLimitedRandomWaitRetry(){
+        val counter = triggerMessageToSuccessAfterNumberOfExceptionsActor(CountLimitedRandomWaitRetryConfig.builder()
+                .maxAttempts(MAX_RETRY_COUNT)
+                .minWaitTimeInMillis(1)
+                .maxWaitTimeInMillis(2)
+                .build());
+        assertEquals(MAX_NUMBER_OF_EXCEPTIONS, counter.get());
+    }
+
     @SneakyThrows
     AtomicInteger triggerMessageToExceptionActor(RetryConfig retryConfig) {
         val counter = new AtomicInteger();
