@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 @Getter
-@AllArgsConstructor
 public class MessageMeta {
 
     private AtomicInteger deliveryAttempt;
