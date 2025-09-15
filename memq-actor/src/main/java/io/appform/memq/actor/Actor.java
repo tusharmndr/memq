@@ -136,13 +136,13 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
     @VisibleForTesting
-    public final void startWith(ExecutorService executorService) {
-        messageDispatcher = executorService;
+    public final void startWithDispatcher(ExecutorService dispatcher) {
+        messageDispatcher = dispatcher;
         mailboxes.values().forEach(Mailbox::start);
     }
 
     @VisibleForTesting
-    public final void ungracefulClose() {
+    public final void closeExceptDispatcher() {
         mailboxes.values().forEach(Mailbox::close);
     }
 
