@@ -37,7 +37,6 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     private final String name;
     private final ExecutorService executorService;
-    private final ExecutorService messageDispatcher; //TODO::Separate dispatch and add NoDispatch flow
     private final ToIntFunction<M> partitioner;
     private final Map<Integer, Mailbox<M>> mailboxes;
     private final BiFunction<M, MessageMeta, Boolean> validationHandler;
@@ -46,6 +45,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private final TriConsumer<M, MessageMeta, Throwable> exceptionHandler;
     private final RetryStrategy retryer;
     private final ActorObserver rootObserver;
+    private ExecutorService messageDispatcher;
 
 
     @SneakyThrows
@@ -75,7 +75,6 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.consumerHandler = consumerHandler;
         this.sidelineHandler = sidelineHandler;
         this.exceptionHandler = exceptionHandler;
-        this.messageDispatcher = Executors.newFixedThreadPool(partitions);
         this.retryer = retryer;
         this.partitioner = partitioner;
         this.mailboxes = IntStream.range(0, partitions)
@@ -125,12 +124,14 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
     public final void start() {
+        messageDispatcher = Executors.newFixedThreadPool(this.mailboxes.size());
         mailboxes.values().forEach(Mailbox::start);
     }
 
     @Override
     public final void close() {
         mailboxes.values().forEach(Mailbox::close);
+        messageDispatcher.shutdown();
     }
 
 
@@ -249,7 +250,6 @@ public class Actor<M extends Message> implements AutoCloseable {
             if (null != monitorFuture) {
                 monitorFuture.cancel(true);
             }
-            actor.messageDispatcher.shutdown();
         }
 
         private void monitor() {
