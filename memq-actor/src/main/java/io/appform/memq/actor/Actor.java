@@ -1,5 +1,6 @@
 package io.appform.memq.actor;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
@@ -134,6 +135,16 @@ public class Actor<M extends Message> implements AutoCloseable {
         messageDispatcher.shutdown();
     }
 
+    @VisibleForTesting
+    public final void startWith(ExecutorService executorService) {
+        messageDispatcher = executorService;
+        mailboxes.values().forEach(Mailbox::start);
+    }
+
+    @VisibleForTesting
+    public final void ungracefulClose() {
+        mailboxes.values().forEach(Mailbox::close);
+    }
 
     private ActorObserver setupObserver(List<ActorObserver> observers) {
         //Terminal observer calls the actual method
