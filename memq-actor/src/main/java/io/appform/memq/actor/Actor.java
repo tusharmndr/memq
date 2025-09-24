@@ -48,6 +48,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             BiConsumer<M, MessageMeta> sidelineHandler,
             TriConsumer<M, MessageMeta, Throwable> exceptionHandler,
             RetryStrategy retryer,
+            DispatcherType dispatcherType,
             int partitions,
             long maxSizePerPartition,
             int maxConcurrencyPerPartition,
@@ -68,7 +69,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         this.exceptionHandler = exceptionHandler;
         this.retryer = retryer;
         this.partitioner = partitioner;
-        this.messageDispatcher = new SyncDispatcher<M>();
+        this.messageDispatcher = dispatcher(dispatcherType, partitions);
         this.mailboxes = IntStream.range(0, partitions)
                 .boxed()
                 .collect(Collectors.toMap(Function.identity(), i -> new Mailbox<M>(this, i, maxSizePerPartition, maxConcurrencyPerPartition)));
@@ -123,6 +124,68 @@ public class Actor<M extends Message> implements AutoCloseable {
         messageDispatcher.close();
     }
 
+    private void processWithObserver(final InternalMessage<M> internalMessage) {
+        val observerMessageMeta = new ObserverMessageMeta(internalMessage.getId(), internalMessage.getPublishedAt(),
+                internalMessage.getValidTill());
+        this.rootObserver.execute(ActorObserverContext.builder()
+                        .messageMeta(observerMessageMeta)
+                        .message(internalMessage.getMessage())
+                        .operation(ActorOperation.CONSUME)
+                        .actorName(this.name)
+                        .build(),
+                () -> process(internalMessage));
+    }
+
+    private boolean process(final InternalMessage<M> internalMessage) {
+        val id = internalMessage.getId();
+        val message = internalMessage.getMessage();
+        var status = false;
+        var messageMeta = new MessageMeta(internalMessage.getPublishedAt(),
+                internalMessage.getValidTill(),
+                internalMessage.getHeaders());
+        try {
+            val valid = this.rootObserver.execute(ActorObserverContext.builder()
+                            .message(message)
+                            .operation(ActorOperation.VALIDATE)
+                            .actorName(this.name)
+                            .build(),
+                    () -> this.validationHandler.apply(message, messageMeta));
+            if (!valid) {
+                log.debug("Message validation failed for message: {}", message);
+                return false;
+            }
+            else {
+                status = this.retryer.execute(() -> {
+                    messageMeta.incrementAttempt();
+                    return this.consumerHandler.apply(message, messageMeta);
+                });
+                if (!status) {
+                    log.debug("Consumer failed for message: {}", message);
+                    this.rootObserver.execute(ActorObserverContext.builder()
+                                    .message(message)
+                                    .operation(ActorOperation.SIDELINE)
+                                    .actorName(this.name)
+                                    .build(),
+                            () -> {
+                                this.sidelineHandler.accept(message, messageMeta);
+                                return true;
+                            });
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error processing message : " + id, e);
+            this.rootObserver.execute(ActorObserverContext.builder()
+                            .message(message)
+                            .operation(ActorOperation.HANDLE_EXCEPTION)
+                            .actorName(this.name)
+                            .build(),
+                    () -> {
+                        this.exceptionHandler.accept(message, messageMeta, e);
+                        return true;
+                    });
+        }
+        return status;
+    }
 
     private ActorObserver setupObserver(List<ActorObserver> observers) {
         //Terminal observer calls the actual method
@@ -140,6 +203,13 @@ public class Actor<M extends Message> implements AutoCloseable {
         return startObserver;
     }
 
+    private Dispatcher<M> dispatcher(final DispatcherType dispatcherType, final int partitions) {
+        return switch (dispatcherType) {
+            case SYNC -> new SyncDispatcher<>();
+            case ASYNC_ISOLATED -> new AsyncIsolatedThreadpoolDispatcher<>(partitions);
+        };
+    }
+
     private static class Mailbox<M extends Message> implements AutoCloseable {
 
         private final Actor<M> actor;
@@ -149,7 +219,6 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final ReentrantLock lock = new ReentrantLock();
         private final Map<String, InternalMessage<M>> messages = new LinkedHashMap<>();
         private final Set<String> inFlight = new HashSet<>();
-        private final AtomicBoolean stopped = new AtomicBoolean();
 
         public Mailbox(Actor<M> actor, int partition, long maxSize, int maxConcurrency) {
             this.actor = actor;
@@ -236,11 +305,11 @@ public class Actor<M extends Message> implements AutoCloseable {
             }
         }
 
-        void releaseLock() {
+        private void releaseLock() {
             lock.unlock();
         }
 
-        void acquireLock() {
+        private void acquireLock() {
             lock.lock();
         }
 
@@ -263,7 +332,8 @@ public class Actor<M extends Message> implements AutoCloseable {
         boolean isRunning();
         void close();
 
-        default boolean dispatch(Mailbox<M> mailbox) {
+        //Always executed inside mailbox lock
+        default boolean dispatch(final Mailbox<M> mailbox) {
             //Find new messages
             val newInOrderedMessages = mailbox.messages.keySet()
                     .stream()
@@ -288,15 +358,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             messagesToBeDelivered.forEach(internalMessage -> mailbox.actor.executorService.submit(() -> {
                 val id = internalMessage.getId();
                 try {
-                    val observerMessageMeta = new ObserverMessageMeta(id, internalMessage.getPublishedAt(),
-                            internalMessage.getValidTill());
-                    mailbox.actor.rootObserver.execute(ActorObserverContext.builder()
-                                    .messageMeta(observerMessageMeta)
-                                    .message(internalMessage.getMessage())
-                                    .operation(ActorOperation.CONSUME)
-                                    .actorName(mailbox.actor.name)
-                                    .build(),
-                            () -> process(mailbox.actor, internalMessage));
+                    mailbox.actor.processWithObserver(internalMessage);
                 }
                 catch (Throwable throwable) {
                     log.error("Error processing internalMessage", throwable);
@@ -307,81 +369,30 @@ public class Actor<M extends Message> implements AutoCloseable {
             }));
             return true;
         }
-
-        default boolean process(final Actor<M> actor, final InternalMessage<M> internalMessage) {
-            val id = internalMessage.getId();
-            val message = internalMessage.getMessage();
-            var status = false;
-            var messageMeta = new MessageMeta(internalMessage.getPublishedAt(),
-                    internalMessage.getValidTill(),
-                    internalMessage.getHeaders());
-            try {
-                val valid = actor.rootObserver.execute(ActorObserverContext.builder()
-                                .message(message)
-                                .operation(ActorOperation.VALIDATE)
-                                .actorName(actor.name)
-                                .build(),
-                        () -> actor.validationHandler.apply(message, messageMeta));
-                if (!valid) {
-                    log.debug("Message validation failed for message: {}", message);
-                    return false;
-                }
-                else {
-                    status = actor.retryer.execute(() -> {
-                        messageMeta.incrementAttempt();
-                        return actor.consumerHandler.apply(message, messageMeta);
-                    });
-                    if (!status) {
-                        log.debug("Consumer failed for message: {}", message);
-                        actor.rootObserver.execute(ActorObserverContext.builder()
-                                        .message(message)
-                                        .operation(ActorOperation.SIDELINE)
-                                        .actorName(actor.name)
-                                        .build(),
-                                () -> {
-                                    actor.sidelineHandler.accept(message, messageMeta);
-                                    return true;
-                                });
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Error processing message : " + id, e);
-                actor.rootObserver.execute(ActorObserverContext.builder()
-                                .message(message)
-                                .operation(ActorOperation.HANDLE_EXCEPTION)
-                                .actorName(actor.name)
-                                .build(),
-                        () -> {
-                            actor.exceptionHandler.accept(message, messageMeta, e);
-                            return true;
-                        });
-            }
-            return status;
-        }
     }
 
-
-    public static class SyncDispatcher<M extends Message> implements Dispatcher<M> {
+    private static class SyncDispatcher<M extends Message> implements Dispatcher<M> {
 
         private final Map<String, Mailbox<M>> registeredMailbox;
 
-        SyncDispatcher(){
+        public SyncDispatcher(){
             registeredMailbox = new ConcurrentHashMap<>();
         }
 
         @Override
-        public void register(Mailbox<M> inMailbox) {
+        public void register(final Mailbox<M> inMailbox) {
             registeredMailbox.putIfAbsent(inMailbox.name, inMailbox);
         }
 
         @Override
-        public void unRegister(Mailbox<M> inMailbox) {
-            log.info("Unregistering dispatcher for actor:{} mailbox:{}", inMailbox.actor.name, inMailbox.name);
+        public void unRegister(final Mailbox<M> inMailbox) {
             registeredMailbox.remove(inMailbox.name);
         }
 
         @Override
-        public boolean triggerDispatch(Mailbox<M> inMailbox) {
+        public boolean triggerDispatch(final Mailbox<M> inMailbox) {
+            //Sync dispatch is executed within mailbox lock
+            //return false in case maxConcurrency is breached
             return dispatch(inMailbox);
         }
 
@@ -395,84 +406,104 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
     }
 
-    public static class AsyncIsolatedThreadpoolDispatcher<M extends Message> implements Dispatcher<M> {
+    private static class AsyncIsolatedThreadpoolDispatcher<M extends Message> implements Dispatcher<M> {
         private final ExecutorService executorService;
-        private final Map<String, Mailbox<M>> registeredMailbox;
-        private final Map<String, Condition> registeredConditions;
-        private final Map<String, AtomicBoolean> mailboxStopped;
-        private final List<Future<?>> monitoredFutures;
+        private final Map<String, AsyncDispatcherWorker<M>> registeredMailboxWorker;
 
-        AsyncIsolatedThreadpoolDispatcher(int inPartitions) {
+        public AsyncIsolatedThreadpoolDispatcher(int inPartitions) {
             this.executorService = Executors.newFixedThreadPool(inPartitions);
-            this.registeredMailbox = new ConcurrentHashMap<>();
-            this.registeredConditions = new ConcurrentHashMap<>();
-            this.mailboxStopped = new ConcurrentHashMap<>();
-            this.monitoredFutures = new LinkedList<>();
-        }
-
-
-        @Override
-        public void register(Mailbox<M> inMailbox) {
-            registeredMailbox.putIfAbsent(inMailbox.name, inMailbox);
-            val condition = inMailbox.lock.newCondition();
-            registeredConditions.put(inMailbox.name, condition);
-            mailboxStopped.put(inMailbox.name, new AtomicBoolean(false));
-            monitoredFutures.add(executorService.submit(()-> monitor(inMailbox, condition)));
-
+            this.registeredMailboxWorker = new ConcurrentHashMap<>();
         }
 
         @Override
-        public void unRegister(Mailbox<M> inMailbox) {
-            log.info("Unregistering dispatcher for actor:{} mailbox:{}", inMailbox.actor.name, inMailbox.name);
-            registeredMailbox.remove(inMailbox.name);
-            if(mailboxStopped.containsKey(inMailbox.name)) {
-                mailboxStopped.get(inMailbox.name).set(true);
+        public final void register(final Mailbox<M> inMailbox) {
+            val mailBoxAsyncDispatcherWorker = new AsyncDispatcherWorker<>(inMailbox, this);
+            registeredMailboxWorker.putIfAbsent(inMailbox.name, mailBoxAsyncDispatcherWorker);
+            mailBoxAsyncDispatcherWorker.start(executorService::submit);
+        }
+
+        @Override
+        public final void unRegister(final Mailbox<M> inMailbox) {
+            if(registeredMailboxWorker.containsKey(inMailbox.name)) {
+                registeredMailboxWorker.get(inMailbox.name).close();
+                registeredMailboxWorker.remove(inMailbox.name);
             }
         }
 
         @Override
-        public boolean triggerDispatch(Mailbox<M> inMailbox) {
-            registeredConditions.get(inMailbox.name).signalAll(); //TODO::can do better from worker?
+        public final boolean triggerDispatch(final Mailbox<M> inMailbox) {
+            registeredMailboxWorker.get(inMailbox.name).trigger();
             return true;
         }
 
         @Override
-        public boolean isRunning() {
-            return mailboxStopped.values()
+        public final boolean isRunning() {
+            return !registeredMailboxWorker.isEmpty()
+                    && registeredMailboxWorker.values()
                     .stream()
-                    .allMatch(stopped -> !stopped.get());
+                    .allMatch(AsyncDispatcherWorker::isRunning);
         }
 
 
         @Override
-        public void close() {
-            monitoredFutures.forEach(monitoredFuture -> monitoredFuture.cancel(true));
+        public final void close() {
             executorService.shutdown();
         }
 
-        private void monitor(Mailbox<M> mailbox, Condition checkCondition) {
-            val name = mailbox.name;
-            mailbox.acquireLock();
-            try {
-                while (true) {
-                    //We can do the tests twice or just stop
-                    //waiting after sometime and check the conditions anyway
-                    //The set difference operation _might_ be expensive, hence going for the latter approach for now
-                    //Can be changed in the future if needed
-                    checkCondition.await(100, TimeUnit.MILLISECONDS);
-                    if (mailboxStopped.get(mailbox.name).get()) {
-                        log.info("Actor {} monitor thread exiting", name);
-                        return;
+        public static class AsyncDispatcherWorker<M extends Message>  implements AutoCloseable {
+            private final Mailbox<M> mailbox;
+            private final AtomicBoolean stopped;
+            private final Condition checkCondition;
+            private Future<?> monitoredFuture;
+
+            public AsyncDispatcherWorker(Mailbox<M> inMailbox, Dispatcher<M> inDispatcher) {
+                mailbox = inMailbox;
+                stopped = new AtomicBoolean(false);
+                checkCondition = inMailbox.lock.newCondition();
+            }
+
+            public final void start(final Function<Runnable, Future<?>> taskSubmitter) {
+                monitoredFuture = taskSubmitter.apply(this::monitor);
+            }
+
+            public final void close() {
+                stopped.set(true);
+                checkCondition.signalAll();
+                monitoredFuture.cancel(true);
+            }
+
+            public final void trigger() {
+                checkCondition.signalAll();
+            }
+
+            public final boolean isRunning() {
+                return !stopped.get();
+            }
+
+            private void monitor() {
+                val name = mailbox.name;
+                mailbox.acquireLock();
+                try {
+                    while (true) {
+                        //We can do the tests twice or just stop
+                        //waiting after sometime and check the conditions anyway
+                        //The set difference operation _might_ be expensive, hence going for the latter approach for now
+                        //Can be changed in the future if needed
+                        checkCondition.await(100, TimeUnit.MILLISECONDS);
+                        if (stopped.get()) {
+                            log.info("Actor {} monitor thread exiting", name);
+                            return;
+                        }
+                        mailbox.actor.messageDispatcher.dispatch(mailbox);
                     }
-                    dispatch(mailbox);
                 }
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Monitor thread stopped for {}", name);
-            }
-            finally {
-                mailbox.releaseLock();
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Monitor thread stopped for {}", name);
+                }
+                finally {
+                    mailbox.releaseLock();
+                }
             }
         }
     }

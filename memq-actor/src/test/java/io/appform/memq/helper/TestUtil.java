@@ -6,6 +6,7 @@ import io.appform.memq.ActorSystem;
 import io.appform.memq.HighLevelActor;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.HighLevelActorConfig;
+import io.appform.memq.actor.DispatcherType;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfig;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
 import io.appform.memq.helper.message.TestIntMessage;
@@ -33,8 +34,9 @@ public class TestUtil {
 
     public static final String GLOBAL_EXECUTOR_SERVICE_GROUP = "global";
     public static final int DEFAULT_THREADPOOL_SIZE = 2;
+    public static final DispatcherType DEFAULT_DISPATCHER = DispatcherType.ASYNC_ISOLATED;
 
-    public static ActorSystem actorSystem(ExecutorService tp) {
+    public static ActorSystem actorSystem(ExecutorService tp, DispatcherType dispatcherType) {
         val metricRegistry = new MetricRegistry();
         return new ActorSystem() {
             private final RetryStrategyFactory retryStrategyFactory = new RetryStrategyFactory();
@@ -67,6 +69,11 @@ public class TestUtil {
             }
 
             @Override
+            public DispatcherType registeredDispatcher() {
+                return dispatcherType;
+            }
+
+            @Override
             public boolean isRunning() {
                 return !registeredActors.isEmpty() && registeredActors.stream().allMatch(Actor::isRunning);
             }
@@ -93,7 +100,7 @@ public class TestUtil {
             protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 counter.addAndGet(message.getValue());
                 while(blockConsume.get()) {
-                    Awaitility.waitAtMost(Duration.ofMillis(100));
+                    Awaitility.waitAtMost(Duration.ofMillis(20));
                 }
                 return true;
             }

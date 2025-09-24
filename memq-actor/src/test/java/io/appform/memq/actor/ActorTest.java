@@ -29,23 +29,36 @@ class ActorTest {
 
     @Test
     @SneakyThrows
-    void testSuccessSinglePartition() {
-        testSuccess(1);
+    void testSuccessSinglePartitionAsyncDispacther() {
+        testSuccess(1, DispatcherType.ASYNC_ISOLATED);
     }
 
     @Test
     @SneakyThrows
-    void testSuccessMultiPartition() {
-        testSuccess(4);
+    void testSuccessMultiPartitionAsyncDispacther() {
+        testSuccess(4, DispatcherType.ASYNC_ISOLATED);
+    }
+
+
+    @Test
+    @SneakyThrows
+    void testSuccessSinglePartitionSyncDispacther() {
+        testSuccess(1, DispatcherType.SYNC);
+    }
+
+    @Test
+    @SneakyThrows
+    void testSuccessMultiPartitionSyncDispacther() {
+        testSuccess(4, DispatcherType.SYNC);
     }
 
 
     @SneakyThrows
-    void testSuccess(int partition) {
+    void testSuccess(int partition, DispatcherType dispatcherType) {
         val sum = new AtomicInteger(0);
         val tp = Executors.newFixedThreadPool(THREADPOOL_SIZE);
         val tc = Executors.newFixedThreadPool(THREADPOOL_SIZE);
-        try (val a = adder(sum, partition, tc)) {
+        try (val a = adder(sum, partition, tc, dispatcherType)) {
             a.start();
             val s = Stopwatch.createStarted();
             IntStream.rangeClosed(1, 10)
@@ -64,7 +77,7 @@ class ActorTest {
         }
     }
 
-    static Actor<TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tc) {
+    static Actor<TestIntMessage> adder(final AtomicInteger sum, int partition, ExecutorService tc, DispatcherType dispatcherType) {
         return new Actor<>("Adder",
                 tc,
                 (message, messageMeta) -> true,
@@ -77,6 +90,7 @@ class ActorTest {
                 (message, messageMeta, throwable) -> {
                 },
                 new NoRetryStrategy(new NoRetryConfig()),
+                dispatcherType,
                 partition,
                 Long.MAX_VALUE,
                 Integer.MAX_VALUE,

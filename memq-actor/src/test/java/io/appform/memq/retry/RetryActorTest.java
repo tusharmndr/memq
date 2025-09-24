@@ -13,7 +13,6 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -121,7 +120,7 @@ class RetryActorTest {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        try (val actorSystem = TestUtil.actorSystem(tc)) {
+        try (val actorSystem = TestUtil.actorSystem(tc, TestUtil.DEFAULT_DISPATCHER)) {
             val highLevelActorConfig = getHighLevelActorConfig(retryConfig);
             val actor = TestUtil.allExceptionActor(counter, sideline,
                     highLevelActorConfig, actorSystem);
@@ -139,14 +138,14 @@ class RetryActorTest {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        try (val actorSystem = TestUtil.actorSystem(tc)) {
+        try (val actorSystem = TestUtil.actorSystem(tc, TestUtil.DEFAULT_DISPATCHER)) {
             val highLevelActorConfig = getHighLevelActorConfig(retryConfig);
             val actor = TestUtil.successAfterNumberOfExceptionsActor(counter, sideline,
                     highLevelActorConfig, actorSystem, MAX_NUMBER_OF_EXCEPTIONS);
             actor.publish(new TestIntMessage(1));
             Awaitility.await()
                     .pollDelay(Duration.ofMillis(5))
-                    .timeout(Duration.ofMillis(30))
+                    .timeout(Duration.ofMillis(500))
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty);
             return counter;

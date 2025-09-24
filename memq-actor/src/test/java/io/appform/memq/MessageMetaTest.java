@@ -1,5 +1,6 @@
 package io.appform.memq;
 
+import io.appform.memq.actor.DispatcherType;
 import io.appform.memq.actor.Message;
 import io.appform.memq.actor.MessageMeta;
 import io.appform.memq.exceptionhandler.config.SidelineConfig;
@@ -36,7 +37,7 @@ public class MessageMetaTest {
         val recordedPublishTime = new AtomicLong(-1);
         val publisherTime = new AtomicLong(-1);
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
-        try (val actorSystem = TestUtil.actorSystem(tc)) {
+        try (val actorSystem = TestUtil.actorSystem(tc, TestUtil.DEFAULT_DISPATCHER)) {
             val highLevelActorConfig = HighLevelActorConfig.builder()
                     .partitions(Constants.SINGLE_PARTITION)
                     .maxSizePerPartition(Long.MAX_VALUE)

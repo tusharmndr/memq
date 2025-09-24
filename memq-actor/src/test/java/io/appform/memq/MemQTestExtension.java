@@ -24,7 +24,8 @@ public class MemQTestExtension implements BeforeEachCallback, AfterEachCallback,
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        actorSystem = TestUtil.actorSystem(Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE));
+        actorSystem = TestUtil.actorSystem(Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE),
+                TestUtil.DEFAULT_DISPATCHER);
     }
 
     @Override
