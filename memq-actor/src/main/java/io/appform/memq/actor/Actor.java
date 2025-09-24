@@ -382,7 +382,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         private final Map<Integer, Mailbox<M>> registeredMailbox;
 
         public SyncDispatcher(int partition){
-            registeredMailbox = new ConcurrentHashMap<>(partition);
+            registeredMailbox = new HashMap<>(partition);
         }
 
         @Override
@@ -418,7 +418,7 @@ public class Actor<M extends Message> implements AutoCloseable {
 
         public AsyncIsolatedThreadpoolDispatcher(int inPartitions) {
             this.executorService = Executors.newFixedThreadPool(inPartitions);
-            this.registeredMailboxWorker = new ConcurrentHashMap<>(inPartitions);
+            this.registeredMailboxWorker = new HashMap<>(inPartitions);
         }
 
         @Override
