@@ -205,7 +205,7 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     private Dispatcher<M> dispatcher(final DispatcherType dispatcherType, final int partitions) {
         return switch (dispatcherType) {
-            case SYNC -> new SyncDispatcher<>();
+            case SYNC -> new SyncDispatcher<>(partitions);
             case ASYNC_ISOLATED -> new AsyncIsolatedThreadpoolDispatcher<>(partitions);
         };
     }
@@ -213,6 +213,7 @@ public class Actor<M extends Message> implements AutoCloseable {
     private static class Mailbox<M extends Message> implements AutoCloseable {
 
         private final Actor<M> actor;
+        private final int partition;
         private final String name;
         private final long maxSize;
         private final int maxConcurrency;
@@ -224,6 +225,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             this.actor = actor;
             this.maxSize = maxSize;
             this.maxConcurrency = maxConcurrency;
+            this.partition = partition;
             this.name = actor.name + "-" + partition;
         }
 
@@ -377,20 +379,20 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     private static class SyncDispatcher<M extends Message> implements Dispatcher<M> {
 
-        private final Map<String, Mailbox<M>> registeredMailbox;
+        private final Map<Integer, Mailbox<M>> registeredMailbox;
 
-        public SyncDispatcher(){
-            registeredMailbox = new ConcurrentHashMap<>();
+        public SyncDispatcher(int partition){
+            registeredMailbox = new ConcurrentHashMap<>(partition);
         }
 
         @Override
         public void register(final Mailbox<M> inMailbox) {
-            registeredMailbox.putIfAbsent(inMailbox.name, inMailbox);
+            registeredMailbox.putIfAbsent(inMailbox.partition, inMailbox);
         }
 
         @Override
         public void unRegister(final Mailbox<M> inMailbox) {
-            registeredMailbox.remove(inMailbox.name);
+            registeredMailbox.remove(inMailbox.partition);
         }
 
         @Override
@@ -412,31 +414,31 @@ public class Actor<M extends Message> implements AutoCloseable {
 
     private static class AsyncIsolatedThreadpoolDispatcher<M extends Message> implements Dispatcher<M> {
         private final ExecutorService executorService;
-        private final Map<String, AsyncDispatcherWorker<M>> registeredMailboxWorker;
+        private final Map<Integer, AsyncDispatcherWorker<M>> registeredMailboxWorker;
 
         public AsyncIsolatedThreadpoolDispatcher(int inPartitions) {
             this.executorService = Executors.newFixedThreadPool(inPartitions);
-            this.registeredMailboxWorker = new ConcurrentHashMap<>();
+            this.registeredMailboxWorker = new ConcurrentHashMap<>(inPartitions);
         }
 
         @Override
         public final void register(final Mailbox<M> inMailbox) {
             val mailBoxAsyncDispatcherWorker = new AsyncDispatcherWorker<>(inMailbox, this);
-            registeredMailboxWorker.putIfAbsent(inMailbox.name, mailBoxAsyncDispatcherWorker);
+            registeredMailboxWorker.putIfAbsent(inMailbox.partition, mailBoxAsyncDispatcherWorker);
             mailBoxAsyncDispatcherWorker.start(executorService::submit);
         }
 
         @Override
         public final void unRegister(final Mailbox<M> inMailbox) {
-            if(registeredMailboxWorker.containsKey(inMailbox.name)) {
-                registeredMailboxWorker.get(inMailbox.name).close();
-                registeredMailboxWorker.remove(inMailbox.name);
+            if(registeredMailboxWorker.containsKey(inMailbox.partition)) {
+                registeredMailboxWorker.get(inMailbox.partition).close();
+                registeredMailboxWorker.remove(inMailbox.partition);
             }
         }
 
         @Override
         public final boolean triggerDispatch(final Mailbox<M> inMailbox) {
-            registeredMailboxWorker.get(inMailbox.name).trigger();
+            registeredMailboxWorker.get(inMailbox.partition).trigger();
             return true;
         }
 
