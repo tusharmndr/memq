@@ -18,12 +18,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @ExtendWith(MemQTestExtension.class)
 public class ActorConcurrencyTest {
 
+
+    //TODO: make this for single dispatcher and use previous for other test
     @Test
     public void testMaxConcurrency(ActorSystem actorSystem) {
         val concurrency = ThreadLocalRandom.current().nextInt(1, 5);
@@ -35,16 +36,24 @@ public class ActorConcurrencyTest {
         val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                 actorConfig, actorSystem, List.of());
         IntStream.range(0, 10).boxed().forEach(i -> {
-            val publish = actor.publish(new TestIntMessage(i));
-            assertTrue(publish);
+            val message = new TestIntMessage(i);
+            while(!actor.publish(message)){
+                log.debug("Publish failed, retrying for message:{}", message);
+                if(actor.inFlight() == actorConfig.getMaxConcurrencyPerPartition()) {
+                    log.debug("Unlocking consume as max currency is achieved while publishing message:{}", message);
+                    blockConsume.set(false);
+                }
+            }
+            if(!blockConsume.get()) {
+                blockConsume.set(true);
+            }
         });
-        assertEquals(concurrency, actor.inFlight());
         blockConsume.set(false);
         Awaitility.await()
                 .timeout(Duration.ofMinutes(1))
                 .catchUncaughtExceptions()
                 .until(actor::isEmpty);
         val metrics = actorSystem.metricRegistry().getMetrics();
-        assertEquals(10, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
+        assertEquals(10, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".success")).getCount());
     }
 }

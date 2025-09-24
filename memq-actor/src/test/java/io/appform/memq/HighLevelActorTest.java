@@ -88,9 +88,12 @@ class HighLevelActorTest {
             IntStream.rangeClosed(1, 10)
                     .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> a.publish(new TestIntMessage(1)))));
             Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
+                    .timeout(Duration.ofSeconds(10))
                     .catchUncaughtExceptions()
-                    .until(() -> sum.get() == 10_000);
+                    .until(() -> {
+                        log.info("Test adder sum:{}", sum.get());
+                        return sum.get() == 10_000;
+                    });
             log.info("Test took {} ms",
                     s.elapsed().toMillis());
             assertEquals(10_000, sum.get());
