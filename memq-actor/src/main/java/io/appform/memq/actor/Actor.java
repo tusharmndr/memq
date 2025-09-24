@@ -287,7 +287,11 @@ public class Actor<M extends Message> implements AutoCloseable {
                 val internalMessage = new InternalMessage<>(message.id(), message.validTill(),
                         System.currentTimeMillis(), message.headers(), message);
                 messages.putIfAbsent(internalMessage.getId(), internalMessage);
-                return actor.messageDispatcher.triggerDispatch(this);
+                val ret =  actor.messageDispatcher.triggerDispatch(this);
+                if(!ret) {
+                    messages.remove(internalMessage.getId());
+                }
+                return ret;
             } finally {
                 releaseLock();
             }
