@@ -92,7 +92,7 @@ class ActorTest {
                 new NoRetryStrategy(new NoRetryConfig()),
                 dispatcherType,
                 partition,
-                Long.MAX_VALUE,
+                Integer.MAX_VALUE,
                 Integer.MAX_VALUE,
                 message -> Math.absExact(message.id().hashCode()) % partition,
                 new ArrayList<>());

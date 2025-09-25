@@ -1,5 +1,6 @@
 package io.appform.memq.actor;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.observer.ActorObserverContext;
@@ -61,6 +62,9 @@ public class Actor<M extends Message> implements AutoCloseable {
         Objects.requireNonNull(consumerHandler, "ConsumerHandler cannot be null");
         Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
+        Preconditions.checkArgument(
+                dispatcherType != DispatcherType.SYNC || maxConcurrencyPerPartition == maxSizePerPartition,
+                        "Max Queue size and max concurrency has to be same for sync dispatcher");
         this.name = name;
         this.executorService = executorService;
         this.validationHandler = validationHandler;
@@ -289,11 +293,8 @@ public class Actor<M extends Message> implements AutoCloseable {
                 val internalMessage = new InternalMessage<>(message.id(), message.validTill(),
                         System.currentTimeMillis(), message.headers(), message);
                 messages.putIfAbsent(internalMessage.getId(), internalMessage);
-                val ret =  actor.messageDispatcher.triggerDispatch(this);
-                if(!ret) {
-                    messages.remove(internalMessage.getId());
-                }
-                return ret;
+                actor.messageDispatcher.triggerDispatch(this);
+                return true;
             } finally {
                 releaseLock();
             }
@@ -334,12 +335,12 @@ public class Actor<M extends Message> implements AutoCloseable {
     interface Dispatcher<M extends Message> {
         void register(Mailbox<M> inMailbox);
         void unRegister(Mailbox<M> inMailbox);
-        boolean triggerDispatch(Mailbox<M> inMailbox);
+        void triggerDispatch(Mailbox<M> inMailbox);
         boolean isRunning();
         void close();
 
         //Always executed inside mailbox lock
-        default boolean dispatch(final Mailbox<M> mailbox) {
+        default void dispatch(final Mailbox<M> mailbox) {
             //Find new messages
             val newInOrderedMessages = mailbox.messages.keySet()
                     .stream()
@@ -350,12 +351,11 @@ public class Actor<M extends Message> implements AutoCloseable {
                 if(mailbox.inFlight.size() == mailbox.maxConcurrency) {
                     log.warn("Reached max concurrency:{}. Ignoring consumption till inflight messages are consumed",
                             mailbox.maxConcurrency);
-                    return false;
                 }
                 else {
                     log.debug("No new messages. Neither is actor stopped. Ignoring spurious dispatch.");
                 }
-                return true;
+                return;
             }
             mailbox.inFlight.addAll(newMessageIds);
             val messagesToBeDelivered = newMessageIds.stream()
@@ -373,7 +373,6 @@ public class Actor<M extends Message> implements AutoCloseable {
                     mailbox.releaseMessage(id);
                 }
             }));
-            return true;
         }
     }
 
@@ -396,10 +395,10 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         @Override
-        public boolean triggerDispatch(final Mailbox<M> inMailbox) {
+        public void triggerDispatch(final Mailbox<M> inMailbox) {
             //Sync dispatch is executed within mailbox lock
             //return false in case maxConcurrency is breached
-            return dispatch(inMailbox);
+            dispatch(inMailbox);
         }
 
         @Override
@@ -437,9 +436,8 @@ public class Actor<M extends Message> implements AutoCloseable {
         }
 
         @Override
-        public final boolean triggerDispatch(final Mailbox<M> inMailbox) {
+        public final void triggerDispatch(final Mailbox<M> inMailbox) {
             registeredMailboxWorker.get(inMailbox.partition).trigger();
-            return true;
         }
 
         @Override

@@ -61,7 +61,7 @@ public class ActorConcurrencyTest {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
-        val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false, Long.MAX_VALUE, concurrency);
+        val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false, concurrency, concurrency);
         val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
         try (val actorSystem = TestUtil.actorSystem(tc, DispatcherType.SYNC)) {
             val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
