@@ -397,7 +397,6 @@ public class Actor<M extends Message> implements AutoCloseable {
         @Override
         public void triggerDispatch(final Mailbox<M> inMailbox) {
             //Sync dispatch is executed within mailbox lock
-            //return false in case maxConcurrency is breached
             dispatch(inMailbox);
         }
 
