@@ -89,7 +89,7 @@ public class MemqActorSystem implements ActorSystem, Managed {
     }
 
     @Override
-    public DispatcherType registeredDispatcher() {
+    public DispatcherType registeredDispatcher(String name) {
         return DispatcherType.ASYNC_ISOLATED;
     }
 

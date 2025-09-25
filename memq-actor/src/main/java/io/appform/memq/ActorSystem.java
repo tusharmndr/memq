@@ -31,7 +31,7 @@ public interface ActorSystem extends AutoCloseable {
 
     List<ActorObserver> registeredObservers();
 
-    DispatcherType registeredDispatcher();
+    DispatcherType registeredDispatcher(String name);
 
     boolean isRunning();
 

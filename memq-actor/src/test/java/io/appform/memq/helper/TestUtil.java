@@ -69,7 +69,7 @@ public class TestUtil {
             }
 
             @Override
-            public DispatcherType registeredDispatcher() {
+            public DispatcherType registeredDispatcher(String name) {
                 return dispatcherType;
             }
 
