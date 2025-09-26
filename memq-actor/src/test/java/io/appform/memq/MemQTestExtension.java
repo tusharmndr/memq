@@ -16,7 +16,6 @@ import java.util.stream.Stream;
  */
 public class MemQTestExtension implements BeforeEachCallback, AfterEachCallback, TestTemplateInvocationContextProvider {
     private ActorSystem actorSystem;
-    private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(MemQTestExtension.class);
 
     @Override
     public void afterEach(ExtensionContext extensionContext) throws Exception {
