@@ -1,17 +1,22 @@
 package io.appform.memq;
 
+import io.appform.memq.actor.DispatcherType;
 import io.appform.memq.helper.TestUtil;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.extension.*;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 /**
  *
  */
-public class MemQTestExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
+public class MemQTestExtension implements BeforeEachCallback, AfterEachCallback, TestTemplateInvocationContextProvider {
     private ActorSystem actorSystem;
+    private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(MemQTestExtension.class);
 
     @Override
     public void afterEach(ExtensionContext extensionContext) throws Exception {
@@ -24,21 +29,46 @@ public class MemQTestExtension implements BeforeEachCallback, AfterEachCallback,
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        actorSystem = TestUtil.actorSystem(Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE),
-                TestUtil.DEFAULT_DISPATCHER);
     }
 
     @Override
-    public boolean supportsParameter(
-            ParameterContext parameterContext,
-            ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType().equals(ActorSystem.class);
+    public boolean supportsTestTemplate(ExtensionContext extensionContext) {
+        return true;
     }
 
     @Override
-    public Object resolveParameter(
-            ParameterContext parameterContext,
-            ExtensionContext extensionContext) throws ParameterResolutionException {
-        return actorSystem;
+    public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(ExtensionContext extensionContext) {
+        return Arrays.stream(DispatcherType.values())
+                .map(dispatcherType -> createContext(dispatcherType, extensionContext));
+    }
+
+    private TestTemplateInvocationContext createContext(DispatcherType dispatcherType, ExtensionContext extensionContext) {
+        return new TestTemplateInvocationContext() {
+            @Override
+            public String getDisplayName(int invocationIndex) {
+                return "Executing with dispatcherType: " + dispatcherType.name();
+            }
+
+            @Override
+            public List<Extension> getAdditionalExtensions() {
+                return List.of(new ParameterResolver() {
+                    @Override
+                    public boolean supportsParameter(
+                            ParameterContext parameterContext,
+                            ExtensionContext extensionContext) throws ParameterResolutionException {
+                        return parameterContext.getParameter().getType().equals(ActorSystem.class);
+                    }
+
+                    @Override
+                    public Object resolveParameter(
+                            ParameterContext parameterContext,
+                            ExtensionContext extensionContext) throws ParameterResolutionException {
+                        actorSystem = TestUtil.actorSystem(Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE),
+                                dispatcherType);
+                        return actorSystem;
+                    }
+                });
+            }
+        };
     }
 }

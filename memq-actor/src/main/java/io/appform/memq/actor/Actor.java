@@ -62,6 +62,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         Objects.requireNonNull(consumerHandler, "ConsumerHandler cannot be null");
         Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
+        Objects.requireNonNull(dispatcherType,"Dispatcher cannot be null");
         Preconditions.checkArgument(
                 dispatcherType != DispatcherType.SYNC || maxConcurrencyPerPartition == maxSizePerPartition,
                         "Max Queue size and max concurrency has to be same for sync dispatcher");

@@ -179,13 +179,13 @@ public class TestUtil {
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
                                                           ExceptionHandlerConfig exceptionHandlerConfig) {
-        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Long.MAX_VALUE, Integer.MAX_VALUE);
+        return noRetryActorConfig(partition, metricDisabled, exceptionHandlerConfig, Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
                                                           boolean metricDisabled,
-                                                          long maxSizePerPartition) {
-        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, Integer.MAX_VALUE);
+                                                          int maxSizePerPartition) {
+        return noRetryActorConfig(partition, metricDisabled, new SidelineConfig(), maxSizePerPartition, maxSizePerPartition);
     }
 
     public static HighLevelActorConfig noRetryActorConfig(int partition,
