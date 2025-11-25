@@ -12,8 +12,17 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -63,9 +72,14 @@ public class Actor<M extends Message> implements AutoCloseable {
         Objects.requireNonNull(sidelineHandler, "SidelineHandler cannot be null");
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler cannot be null");
         Objects.requireNonNull(dispatcherType,"Dispatcher cannot be null");
-        Preconditions.checkArgument(
-                dispatcherType != DispatcherType.SYNC || maxConcurrencyPerPartition == maxSizePerPartition,
-                        "Max Queue size and max concurrency has to be same for sync dispatcher");
+        switch (dispatcherType){
+            case SYNC ->
+                    Preconditions.checkArgument( maxConcurrencyPerPartition == maxSizePerPartition,
+                    "Max Queue size and max concurrency has to be same for sync dispatcher");
+            case ASYNC_ISOLATED -> {
+            }
+        }
+        
         this.name = name;
         this.executorService = executorService;
         this.validationHandler = validationHandler;
