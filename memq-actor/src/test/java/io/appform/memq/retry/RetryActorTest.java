@@ -145,11 +145,7 @@ class RetryActorTest {
             actor.publish(new TestIntMessage(1));
             Awaitility.await()
                     .pollDelay(Duration.ofMillis(5))
-<<<<<<< HEAD
-                    .timeout(Duration.ofMillis(30))
-=======
                     .timeout(Duration.ofMillis(500))
->>>>>>> dispatcher
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty);
             return counter;
