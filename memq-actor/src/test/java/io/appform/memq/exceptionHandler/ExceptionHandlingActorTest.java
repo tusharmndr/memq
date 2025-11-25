@@ -11,7 +11,7 @@ import io.appform.memq.helper.message.TestIntMessage;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
@@ -24,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(MemQTestExtension.class)
 class ExceptionHandlingActorTest {
 
-    @Test
+    @TestTemplate
     void testSidelineExceptionConfig(ActorSystem actorSystem) {
         val sideline = triggerMessageToExceptionActor(new SidelineConfig(), actorSystem);
         assertTrue(sideline.get());
     }
 
-    @Test
+    @TestTemplate
     void testDropExceptionConfig(ActorSystem actorSystem) {
         val sideline = triggerMessageToExceptionActor(new DropConfig(), actorSystem);
         assertFalse(sideline.get());

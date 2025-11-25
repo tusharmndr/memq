@@ -10,7 +10,7 @@ import io.appform.memq.helper.message.TestIntMessage;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(MemQTestExtension.class)
 class MetricObserverActorTest {
 
-    @Test
+    @TestTemplate
     @SneakyThrows
     void testMetrics(ActorSystem actorSystem) {
         val actorName = TestUtil.HighLevelActorType.EXCEPTION_ACTOR.name();
@@ -57,7 +57,7 @@ class MetricObserverActorTest {
         assertEquals(actorName, actor.getType().name());
     }
 
-    @Test
+    @TestTemplate
     @SneakyThrows
     void testNoMetrics(ActorSystem actorSystem) {
         val counter = new AtomicInteger();

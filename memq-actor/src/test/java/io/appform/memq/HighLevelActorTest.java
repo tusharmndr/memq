@@ -10,7 +10,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.time.Duration;
@@ -35,19 +35,19 @@ class HighLevelActorTest {
 
     static final int THREAD_POOL_SIZE = 10;
 
-    @Test
+    @TestTemplate
     @SneakyThrows
     void testSuccessSinglePartition(ActorSystem actorSystem) {
         testSuccess(1, actorSystem);
     }
 
-    @Test
+    @TestTemplate
     @SneakyThrows
     void testSuccessMultiPartition(ActorSystem actorSystem) {
         testSuccess(4, actorSystem);
     }
 
-    @Test
+    @TestTemplate
     @SneakyThrows
     void testBoundedMailboxActorTest(ActorSystem actorSystem) {
         val metricPrefix = "actor." + TestUtil.HighLevelActorType.BLOCKING_ACTOR.name() + ".";
@@ -55,7 +55,7 @@ class HighLevelActorTest {
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false,
-                1L);
+                1);
         val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                 actorConfig, actorSystem, List.of());
         val publish = actor.publish(new TestIntMessage(1));
@@ -74,7 +74,7 @@ class HighLevelActorTest {
         val metrics = actorSystem.metricRegistry().getMetrics();
         assertEquals(11, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".total")).getCount());
         assertEquals(1, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".success")).getCount());
-        assertEquals(10, ((Meter)  metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".failed")).getCount());
+        assertEquals(10, ((Meter) metrics.get(metricPrefix + ActorOperation.PUBLISH.name() + ".failed")).getCount());
 
     }
 
@@ -88,9 +88,12 @@ class HighLevelActorTest {
             IntStream.rangeClosed(1, 10)
                     .forEach(i -> IntStream.rangeClosed(1, 1000).forEach(j -> tp.submit(() -> a.publish(new TestIntMessage(1)))));
             Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
+                    .timeout(Duration.ofSeconds(10))
                     .catchUncaughtExceptions()
-                    .until(() -> sum.get() == 10_000);
+                    .until(() -> {
+                        log.info("Test adder sum:{}", sum.get());
+                        return sum.get() == 10_000;
+                    });
             log.info("Test took {} ms",
                     s.elapsed().toMillis());
             assertEquals(10_000, sum.get());
@@ -99,13 +102,13 @@ class HighLevelActorTest {
         }
     }
 
-    @Test
+    @TestTemplate
     void testPurge(ActorSystem actorSystem) {
         val counter = new AtomicInteger();
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false,
-                1L);
+                1);
         val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                 actorConfig, actorSystem, List.of());
         val publish = actor.publish(new TestIntMessage(1));
