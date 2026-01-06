@@ -21,13 +21,13 @@ interface Dispatcher<M extends Message> extends AutoCloseable {
     //Always executed inside mailbox lock
     default void dispatch(final Mailbox<M> mailbox) {
         //Find new messages
-        val newInOrderedMessages = mailbox.messages.keySet()
+        val newInOrderedMessages = mailbox.getMessages().keySet()
                 .stream()
                 .limit(mailbox.getMaxConcurrency())
                 .collect(Collectors.toSet());
-        val newMessageIds = Set.copyOf(Sets.difference(newInOrderedMessages, mailbox.inFlight));
+        val newMessageIds = Set.copyOf(Sets.difference(newInOrderedMessages, mailbox.getInFlight()));
         if (newMessageIds.isEmpty()) {
-            if(mailbox.inFlight.size() == mailbox.getMaxConcurrency()) {
+            if(mailbox.getInFlight().size() == mailbox.getMaxConcurrency()) {
                 log.warn("Reached max concurrency:{}. Ignoring consumption till inflight messages are consumed",
                         mailbox.getMaxConcurrency());
             }
@@ -36,9 +36,9 @@ interface Dispatcher<M extends Message> extends AutoCloseable {
             }
             return;
         }
-        mailbox.inFlight.addAll(newMessageIds);
+        mailbox.getInFlight().addAll(newMessageIds);
         val messagesToBeDelivered = newMessageIds.stream()
-                .map(mailbox.messages::get)
+                .map(mailbox.getMessages()::get)
                 .toList();
         messagesToBeDelivered.forEach(internalMessage -> mailbox.getActor().getExecutorService().submit(() -> {
             val id = internalMessage.getId();
