@@ -13,13 +13,13 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 class Mailbox<M extends Message> implements AutoCloseable {
 
-    final Actor<M> actor;
-    final int partition;
-    final String name;
-    final long maxSize;
-    final int maxConcurrency;
     final Map<String, InternalMessage<M>> messages = new LinkedHashMap<>();
     final Set<String> inFlight = new HashSet<>();
+    private final Actor<M> actor;
+    private final int partition;
+    private final String name;
+    private final long maxSize;
+    private final int maxConcurrency;
     private final ReentrantLock lock = new ReentrantLock();
 
     public Mailbox(Actor<M> actor, int partition, long maxSize, int maxConcurrency) {
@@ -138,5 +138,14 @@ class Mailbox<M extends Message> implements AutoCloseable {
     int getPartition() {
         return partition;
     }
+
+    int getMaxConcurrency() {
+        return maxConcurrency;
+    }
+
+    String getName() {
+        return name;
+    }
+
 }
 

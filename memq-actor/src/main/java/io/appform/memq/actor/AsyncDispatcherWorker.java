@@ -20,8 +20,8 @@ class AsyncDispatcherWorker<M extends Message> implements AutoCloseable {
     public AsyncDispatcherWorker(Mailbox<M> inMailbox, Dispatcher<M> inDispatcher) {
         mailbox = inMailbox;
         dispatcher = inDispatcher;
-        stopped = new AtomicBoolean(false);
         checkCondition = inMailbox.lockNewCondition();
+        stopped = new AtomicBoolean(false);
     }
 
     //Always executed inside mailbox lock
@@ -46,7 +46,7 @@ class AsyncDispatcherWorker<M extends Message> implements AutoCloseable {
     }
 
     private void monitor() {
-        val name = mailbox.name;
+        val name = mailbox.getName();
         mailbox.acquireLock();
         try {
             while (true) {

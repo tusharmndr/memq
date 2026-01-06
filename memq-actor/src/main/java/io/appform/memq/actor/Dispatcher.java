@@ -2,13 +2,15 @@ package io.appform.memq.actor;
 
 import com.google.common.collect.Sets;
 import lombok.val;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
 interface Dispatcher<M extends Message> extends AutoCloseable {
 
-
+    Logger log = LoggerFactory.getLogger(Dispatcher.class);
 
     void register(Mailbox<M> inMailbox);   //Always executed inside mailbox lock
     void deRegister(Mailbox<M> inMailbox); //Always executed inside mailbox lock
@@ -21,13 +23,13 @@ interface Dispatcher<M extends Message> extends AutoCloseable {
         //Find new messages
         val newInOrderedMessages = mailbox.messages.keySet()
                 .stream()
-                .limit(mailbox.maxConcurrency)
+                .limit(mailbox.getMaxConcurrency())
                 .collect(Collectors.toSet());
         val newMessageIds = Set.copyOf(Sets.difference(newInOrderedMessages, mailbox.inFlight));
         if (newMessageIds.isEmpty()) {
-            if(mailbox.inFlight.size() == mailbox.maxConcurrency) {
+            if(mailbox.inFlight.size() == mailbox.getMaxConcurrency()) {
                 log.warn("Reached max concurrency:{}. Ignoring consumption till inflight messages are consumed",
-                        mailbox.maxConcurrency);
+                        mailbox.getMaxConcurrency());
             }
             else {
                 log.debug("No new messages. Neither is actor stopped. Ignoring spurious dispatch.");
@@ -50,13 +52,5 @@ interface Dispatcher<M extends Message> extends AutoCloseable {
                 mailbox.releaseMessage(id);
             }
         }));
-    }
-
-    default void logError(String message, Throwable error) {
-        // Default implementation for error logging
-        System.err.println("Dispatcher Error: " + message);
-        if (error != null) {
-            error.printStackTrace();
-        }
     }
 }
