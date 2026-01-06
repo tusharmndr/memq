@@ -320,7 +320,7 @@ public class Actor<M extends Message> implements AutoCloseable {
         public final void close() {
             acquireLock();
             try {
-                actor.messageDispatcher.unRegister(this);
+                actor.messageDispatcher.deRegister(this);
             }
             finally {
                 releaseLock();
@@ -348,9 +348,9 @@ public class Actor<M extends Message> implements AutoCloseable {
     }
 
     interface Dispatcher<M extends Message> {
-        void register(Mailbox<M> inMailbox);
-        void unRegister(Mailbox<M> inMailbox);
-        void triggerDispatch(Mailbox<M> inMailbox);
+        void register(Mailbox<M> inMailbox);   //Always executed inside mailbox lock
+        void deRegister(Mailbox<M> inMailbox); //Always executed inside mailbox lock
+        void triggerDispatch(Mailbox<M> inMailbox); //Always executed inside mailbox lock
         boolean isRunning();
         void close();
 
@@ -399,22 +399,26 @@ public class Actor<M extends Message> implements AutoCloseable {
             registeredMailbox = new HashMap<>(partition);
         }
 
+        //Always executed inside mailbox lock
         @Override
         public void register(final Mailbox<M> inMailbox) {
             registeredMailbox.putIfAbsent(inMailbox.partition, inMailbox);
         }
 
+        //Always executed inside mailbox lock
         @Override
-        public void unRegister(final Mailbox<M> inMailbox) {
+        public void deRegister(final Mailbox<M> inMailbox) {
             registeredMailbox.remove(inMailbox.partition);
         }
 
+
+        //Always executed inside mailbox lock
         @Override
         public void triggerDispatch(final Mailbox<M> inMailbox) {
-            //Sync dispatch is executed within mailbox lock
             dispatch(inMailbox);
         }
 
+        //Always executed inside mailbox lock
         @Override
         public boolean isRunning() {
             return !registeredMailbox.isEmpty();
@@ -434,6 +438,7 @@ public class Actor<M extends Message> implements AutoCloseable {
             this.registeredMailboxWorker = new HashMap<>(inPartitions);
         }
 
+        //Always executed inside mailbox lock
         @Override
         public final void register(final Mailbox<M> inMailbox) {
             val mailBoxAsyncDispatcherWorker = new AsyncDispatcherWorker<>(inMailbox, this);
@@ -441,14 +446,16 @@ public class Actor<M extends Message> implements AutoCloseable {
             mailBoxAsyncDispatcherWorker.start(executorService::submit);
         }
 
+        //Always executed inside mailbox lock
         @Override
-        public final void unRegister(final Mailbox<M> inMailbox) {
+        public final void deRegister(final Mailbox<M> inMailbox) {
             if(registeredMailboxWorker.containsKey(inMailbox.partition)) {
                 registeredMailboxWorker.get(inMailbox.partition).close();
                 registeredMailboxWorker.remove(inMailbox.partition);
             }
         }
 
+        //Always executed inside mailbox lock
         @Override
         public final void triggerDispatch(final Mailbox<M> inMailbox) {
             registeredMailboxWorker.get(inMailbox.partition).trigger();
@@ -461,7 +468,6 @@ public class Actor<M extends Message> implements AutoCloseable {
                     .stream()
                     .allMatch(AsyncDispatcherWorker::isRunning);
         }
-
 
         @Override
         public final void close() {
@@ -480,16 +486,19 @@ public class Actor<M extends Message> implements AutoCloseable {
                 checkCondition = inMailbox.lock.newCondition();
             }
 
+            //Always executed inside mailbox lock
             public final void start(final Function<Runnable, Future<?>> taskSubmitter) {
                 monitoredFuture = taskSubmitter.apply(this::monitor);
             }
 
+            //Always executed inside mailbox lock
             public final void close() {
                 stopped.set(true);
                 checkCondition.signalAll();
                 monitoredFuture.cancel(true);
             }
 
+            //Always executed inside mailbox lock
             public final void trigger() {
                 checkCondition.signalAll();
             }
