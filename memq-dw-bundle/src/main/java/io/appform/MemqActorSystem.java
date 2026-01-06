@@ -6,6 +6,7 @@ import io.appform.config.MemqConfig;
 import io.appform.memq.ActorSystem;
 import io.appform.memq.actor.Actor;
 import io.appform.memq.HighLevelActorConfig;
+import io.appform.memq.actor.DispatcherType;
 import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
@@ -85,6 +86,11 @@ public class MemqActorSystem implements ActorSystem, Managed {
     @Override
     public List<ActorObserver> registeredObservers() {
         return List.copyOf(this.actorObservers);
+    }
+
+    @Override
+    public DispatcherType registeredDispatcher(String name) {
+        return DispatcherType.ASYNC_ISOLATED;
     }
 
     @Override

@@ -91,6 +91,7 @@ public abstract class HighLevelActor<MessageType extends Enum<MessageType>, M ex
                 this::sideline,
                 actorSystem.createExceptionHandler(highLevelActorConfig, this::sideline),
                 actorSystem.createRetryer(highLevelActorConfig),
+                actorSystem.registeredDispatcher(name),
                 highLevelActorConfig.getPartitions(),
                 highLevelActorConfig.getMaxSizePerPartition(),
                 highLevelActorConfig.getMaxConcurrencyPerPartition(),

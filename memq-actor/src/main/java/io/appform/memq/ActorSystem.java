@@ -2,6 +2,7 @@ package io.appform.memq;
 
 import com.codahale.metrics.MetricRegistry;
 import io.appform.memq.actor.Actor;
+import io.appform.memq.actor.DispatcherType;
 import io.appform.memq.actor.Message;
 import io.appform.memq.exceptionhandler.config.DropConfig;
 import io.appform.memq.exceptionhandler.config.ExceptionHandlerConfigVisitor;
@@ -29,6 +30,8 @@ public interface ActorSystem extends AutoCloseable {
     MetricRegistry metricRegistry();
 
     List<ActorObserver> registeredObservers();
+
+    DispatcherType registeredDispatcher(String name);
 
     boolean isRunning();
 
