@@ -15,6 +15,7 @@ import io.appform.memq.observer.ActorObserver;
 import io.appform.memq.retry.RetryStrategy;
 import io.appform.memq.retry.RetryStrategyFactory;
 import io.appform.memq.retry.config.NoRetryConfig;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.awaitility.Awaitility;
 
@@ -24,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 public class TestUtil {
 
     public enum HighLevelActorType {
@@ -99,6 +101,7 @@ public class TestUtil {
             @Override
             protected boolean handle(TestIntMessage message, MessageMeta messageMeta) {
                 counter.addAndGet(message.getValue());
+                log.info("Started blocked actor handle with counter: {}", counter.get());
                 while(blockConsume.get()) {
                     Awaitility.waitAtMost(Duration.ofMillis(20));
                 }
