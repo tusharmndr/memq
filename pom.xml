@@ -16,6 +16,7 @@
     <modules>
         <module>memq-actor</module>
         <module>memq-dw-bundle</module>
+        <module>report-aggregate-module</module>
     </modules>
 
     <distributionManagement>
@@ -91,6 +92,10 @@
             **/model/**,
             **/models/**,
         </sonar.exclusions>
+        <sonar.coverage.jacoco.xmlReportPaths>
+            ${maven.multiModuleProjectDirectory}/report-aggregate/target/site/
+            jacoco-aggregate/jacoco.xml
+        </sonar.coverage.jacoco.xmlReportPaths>
         <guava.version>33.0.0-jre</guava.version>
         <commons-lang3.version>3.12.0</commons-lang3.version>
     </properties>
@@ -217,6 +222,9 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <formats>
+                        <format>XML</format>
+                    </formats>
                 </configuration>
             </plugin>
             <plugin>
