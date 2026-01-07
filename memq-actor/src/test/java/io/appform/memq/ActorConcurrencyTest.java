@@ -34,18 +34,21 @@ public class ActorConcurrencyTest {
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false, Long.MAX_VALUE, concurrency);
-        val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
+        val tc = Executors.newFixedThreadPool(10);
         try (val actorSystem = TestUtil.actorSystem(tc, DispatcherType.ASYNC_ISOLATED)) {
             val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                     actorConfig, actorSystem, List.of());
             IntStream.range(0, 10).boxed().forEach(i -> {
-                val publish = actor.publish(new TestIntMessage(i));
+                val publish = actor.publish(new TestIntMessage(1));
                 assertTrue(publish);
             });
+            Awaitility.await()
+                    .timeout(Duration.ofSeconds(10))
+                    .until( () -> counter.get() >= concurrency );
             assertEquals(concurrency, actor.inFlight());
             blockConsume.set(false);
             Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
+                    .timeout(Duration.ofSeconds(10))
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty);
             val metrics = actorSystem.metricRegistry().getMetrics();
@@ -62,13 +65,13 @@ public class ActorConcurrencyTest {
         val sideline = new AtomicBoolean();
         val blockConsume = new AtomicBoolean(true);
         val actorConfig = TestUtil.noRetryActorConfig(Constants.SINGLE_PARTITION, false, concurrency, concurrency);
-        val tc = Executors.newFixedThreadPool(TestUtil.DEFAULT_THREADPOOL_SIZE);
+        val tc = Executors.newFixedThreadPool(10);
         try (val actorSystem = TestUtil.actorSystem(tc, DispatcherType.SYNC)) {
             val actor = TestUtil.blockingActor(counter, sideline, blockConsume,
                     actorConfig, actorSystem, List.of());
             val concurrencyBreached = new AtomicInteger(0);
             IntStream.range(0, 10).boxed().forEach(i -> {
-                val message = new TestIntMessage(i);
+                val message = new TestIntMessage(1);
                 while (!actor.publish(message)) {
                     log.debug("Publish failed, retrying for message:{}", message);
                     if (actor.inFlight() == actorConfig.getMaxConcurrencyPerPartition()) {
@@ -84,7 +87,7 @@ public class ActorConcurrencyTest {
             assertTrue(concurrencyBreached.get() > 0);
             blockConsume.set(false);
             Awaitility.await()
-                    .timeout(Duration.ofMinutes(1))
+                    .timeout(Duration.ofSeconds(10))
                     .catchUncaughtExceptions()
                     .until(actor::isEmpty);
             val metrics = actorSystem.metricRegistry().getMetrics();
