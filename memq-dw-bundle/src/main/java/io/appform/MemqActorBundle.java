@@ -39,7 +39,7 @@ public abstract class MemqActorBundle<T extends Configuration> implements Config
         ExecutorServiceProvider executorServiceProvider = executorServiceProvider(t);
         Objects.requireNonNull(executorServiceProvider, "Null executor service provider provided");
         this.memqActorSystem = new MemqActorSystem(memqConfig,
-                executorServiceProvider,
+                                                   executorServiceProvider,
                                                    this.observers,
                                                    environment.metrics());
         environment.lifecycle().manage(memqActorSystem);
